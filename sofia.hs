@@ -7,41 +7,55 @@ legalChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['%',' ']
 isLegal :: Char -> Bool
 isLegal x = if length [a | a <- legalChars, a == x] == 1 then True else False
 
-data TypeOfNode = Expression | Single | Statement | Formula | Implication | Equality | Symbol deriving (Show)
-data Tree a b = Node [a] b [Tree a b] --deriving (Show)
-
-class SType a where
-   gettype       :: a -> TypeOfNode
-
-instance SType TypeOfNode where
-   gettype x = x
-
 class Printable a where
     printable :: a -> String
 
 instance Printable Char where
     printable x = id [x]
 
---instance Show a => Show [a] where
---   show a = "Hello"
+toString :: Printable a => [a] -> String
+toString [] = ""
+toString (x:xs) = (printable x) ++ (toString xs)
+
+data TypeOfNode = Single | Statement | Formula | Implication | Equality | Symbol deriving (Show)
+data Tree a b = Node [a] b [Tree a b]
 
 instance (Printable a, Show a, SType b, Show b) => Show (Tree a b) where
     show (Node a b c) = case gettype b of
-                             Expression     -> "Expression: " ++ showtree c
                              Single         -> "[" ++ showtree c ++ "]"
-                             Implication    -> printableString a
-                             Symbol         -> printableString a
+                             Implication    -> ":"
+                             Equality       -> "="
+                             Symbol         -> toString a
                              _              -> showtree c
                              where showtree z = case z of
                                                      []   -> ""
                                                      x:xs -> (show x) ++ (showtree xs) 
-                                   printableString [] = ""
-                                   printableString (x:xs) = (printable x) ++ (printableString xs)
 
--- type NodeVal = (String, TypeOfNode)
--- type STree = Tree NodeVal
 type STree = Tree Char TypeOfNode
 
+class SType a where
+    gettype       :: a -> TypeOfNode
+
+instance SType TypeOfNode where
+    gettype x = x
+
+instance SType b => SType (Tree a b) where
+    gettype (Node a b c) = gettype b
+
+class SProofTree a where
+    selfequate :: a -> STree
+
+toSTreeList :: (Printable a, SType b) => [Tree a b] -> [STree]
+toSTreeList [] = []
+toSTreeList ((Node a b c):ns)  = (Node (toString a) (gettype b) (toSTreeList c)):(toSTreeList ns)
+
+toSTree :: (Printable a, SType b) => Tree a b -> STree
+toSTree x = head (toSTreeList [x])
+
+instance (Printable a, SType b) => SProofTree (Tree a b) where
+    selfequate x = Node [] Statement [n, (Node [] Equality []), n] where
+                                n = toSTree x
+ 
 sCharacter :: Parser Char
 sCharacter = sat (\x -> elem x legalChars)
 
@@ -54,7 +68,8 @@ sSymbol = do       x <- sCharacter
                    return [y | y <- (x:xs), y /= ' ']
 
 sFormulator :: Parser STree
-sFormulator = do x <- specialChar ':'; return (Node [x] Implication [])
+sFormulator = do x <- specialChar ':'; return (Node [] Implication [])
+               <|> do x <- specialChar '='; return (Node [] Equality [])
                <|> do x <- sSymbol; return (Node x Symbol [])
 
 sSingle :: Parser STree
@@ -94,6 +109,9 @@ sFormula = do x <- sFormulator;
 
 sExpression :: Parser STree
 sExpression = do x <- sFormula
-                 return (Node "" Expression [x])
+                 return x
                <|> do x <- sStatement
-                      return (Node "" Expression [x])
+                      return x
+
+assume :: String -> STree
+assume x = fst $ head $ parse sExpression x
