@@ -20,38 +20,40 @@
 \makeatletter
 \makeatother
 
+\newcommand{\single}{\langle\texttt{single}\rangle}
+
 \newcommand{\expression}{\langle\texttt{expression}\rangle}
 \newcommand{\statement}{\langle\texttt{statement}\rangle}
-\newcommand{\single}{\langle\texttt{single}\rangle}
 \newcommand{\formula}{\langle\texttt{formula}\rangle}
 \newcommand{\formulator}{\langle\texttt{formulator}\rangle}
 \newcommand{\character}{\langle\texttt{character}\rangle}
+\newcommand{\atom}{\langle\texttt{atom}\rangle}
 \newcommand{\symb}{\langle\texttt{symbol}\rangle}
 
 \begin{document}
 
-\begin{align*}
-\expression	& \coloneqq &&	\statement \Big| \formula\\
-\formula	& \coloneqq &&	\formulator\\
-			&           &&	\Big| \formulator \statement \Big\{ \formulator
-							\statement \Big\} \Big[ \formulator \Big]\\
-			&           &&	\Big| \statement \formulator \Big\{ \statement
-							\formulator \Big\} \Big[ \statement \Big]\\
-\statement	& \coloneqq &&  \textrm{`['} \expression \textrm{`]'} \Big\{
-							\textrm{`['} \expression \textrm{`]'} \Big\}\\
-\formulator & \coloneqq &&	\textrm{`:'} \Big| \symb\\
-\symb		& \coloneqq &&  \character \Big\{ \character \Big\}\\
-\character	& \coloneqq &&  \textrm{`a'} \Big| \dots \Big| \textrm{`z'} \Big|
-							\textrm{`A'} \Big| \dots \Big| \textrm{`Z'} \Big|
-							\textrm{`0'} \Big| \dots \Big| \textrm{`9'} \Big|
-							\textrm{`+'} \Big| \textrm{`-'} \Big| \textrm{`/'}
-							\Big| \textrm{`*'} \Big|\textrm{`\%'} \Big|
-							\textrm{`\textasciicircum'} \Big| \textrm{`\&'}
-							\Big| \textrm{`.'} \Big|\textrm{`?'} \Big|
-							\textrm{`!'} \Big| \textrm{`\_'}
-\end{align*}
+%\begin{align*}
+%\expression	& \coloneqq &&	\statement \Big| \formula\\
+%\formula	& \coloneqq &&	\formulator\\
+%			&           &&	\Big| \formulator \statement \Big\{ \formulator
+%							\statement \Big\} \Big[ \formulator \Big]\\
+%			&           &&	\Big| \statement \formulator \Big\{ \statement
+%							\formulator \Big\} \Big[ \statement \Big]\\
+%\statement	& \coloneqq &&  \textrm{`['} \expression \textrm{`]'} \Big\{
+%							\textrm{`['} \expression \textrm{`]'} \Big\}\\
+%\formulator & \coloneqq &&	\textrm{`:'} \Big| \symb\\
+%\symb		& \coloneqq &&  \character \Big\{ \character \Big\}\\
+%\character	& \coloneqq &&  \textrm{`a'} \Big| \dots \Big| \textrm{`z'} \Big|
+%							\textrm{`A'} \Big| \dots \Big| \textrm{`Z'} \Big|
+%							\textrm{`0'} \Big| \dots \Big| \textrm{`9'} \Big|
+%							\textrm{`+'} \Big| \textrm{`-'} \Big| \textrm{`/'}
+%							\Big| \textrm{`*'} \Big|\textrm{`\%'} \Big|
+%							\textrm{`\textasciicircum'} \Big| \textrm{`\&'}
+%							\Big| \textrm{`.'} \Big|\textrm{`?'} \Big|
+%							\textrm{`!'} \Big| \textrm{`\_'}
+%\end{align*}
 
-\vspace{30pt}
+%\vspace{30pt}
 
 \begin{align*}
 \expression	& \coloneqq &&	\formula \Big| \statement\\
@@ -59,9 +61,9 @@
 							\statement \Big\} \Big[ \formulator \Big] \bigg]\\
 			&           &&	\Big| \statement \formulator \Big\{ \statement
 							\formulator \Big\} \Big[ \statement \Big]\\
-\statement	& \coloneqq &&  \single \Big\{ \single \Big\}\\
-\single		& \coloneqq &&  \textrm{`['} \formula \Big| \statement \textrm{`]'}\\
-\formulator & \coloneqq &&	\textrm{`:'} \Big| \symb\\
+\statement	& \coloneqq &&  \atom \Big\{ \atom \Big\}\\
+\atom		& \coloneqq &&  \textrm{`['} \formula \Big| \statement \textrm{`]'}\\
+\formulator & \coloneqq &&	\textrm{`:'} \Big| \textrm{`='} \Big| \symb\\
 \symb		& \coloneqq &&  \character \Big\{ \character \Big\}\\
 \character	& \coloneqq &&  \textrm{`a'} \Big| \dots \Big| \textrm{`z'} \Big|
 							\textrm{`A'} \Big| \dots \Big| \textrm{`Z'} \Big|
