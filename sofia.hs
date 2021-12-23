@@ -11,6 +11,12 @@ rmdups (x:xs) = x:rmdups (filter (/= x) xs)
 
 -- inf = read "Infinity" :: Float
 
+intersect :: (Eq a) => [[a]] -> [a]
+intersect xss = [x | xs <- xss, x <- xs, and $ map (elem x) xss]
+
+without :: (Eq a) => [a] -> [a] -> [a]
+without xs ys = [x | x <- xs, not (elem x ys)]
+
 getIndex :: Int -> [a] -> a
 getIndex i xs = fst $ head $ [(j, k) | (j, k) <- pairs, k == i] where pairs = zip [y | y <- xs] [1..]
 
@@ -125,50 +131,6 @@ preorderDepth t i = if getSubSTrees t == [] then [(i, toType t)]
                     else (i, toType t) : [x | t' <- (getSubSTrees t), x <- preorderDepth t' (i+1)]
 --------------------------------------------------------------------------------
 
-vars :: STree -> [[Char]]
-vars tree = [getSymbol x4 | x1 <- filter (\x -> toType x == Statement) [tree],
-                            x2 <- filter (\x -> toType x == Atom) (getSubSTrees x1),
-                            x3 <- filter (\x -> toType x == Formula) (getSubSTrees x2),
-                            length (getSubSTrees x3) == 1, -- TODO make more efficient 
-                            x4 <- filter (\x -> toType x == Symbol) (getSubSTrees x3)]
-
---------------------------------------------------------------------------------
-
--- returns a list resulting from a preorder traversal of tree t and
--- applying s to each subtree 
--- direct children of subtrees are skipped whenever the filter-condition
--- f is not met; this is recursively communicated by setting b to False
-preorder :: (STreeClass a, Eq a) => (a -> b) ->  (a -> Bool) -> a -> Bool -> [b]
-preorder s f t b = if getSubtrees t == [] then val
-               else val ++  [x | t' <- (getSubtrees t), x <- preorder' t'] where
-                   preorder' t'' = if f t then preorder s f t'' True
-                                   else preorder s f t'' False
-                   val = if b then [s t] else []
-
-isVar :: STree -> Bool
-isVar = \x -> length (getSubtrees x) == 1
-
-deepVars :: STree -> [[Char]]
-deepVars t = rmdups [s | s <- preorder getSymbol isVar t True, s /= ""]
-
-minVarDepth :: String -> Proof -> Int
-minVarDepth s p = case depths of
-                       [] -> -1
-                       _  -> minimum depths
-                       where
-                           depths = [second $ pl | pl <- p,
-                                                   elem s (vars (third pl))]
-
-freeVars :: STree -> Proof -> [[Char]]
-freeVars t p = [v | v <- deepVars t,
-                    or [minVarDepth v p == -1, curDepth p < minVarDepth v p]] -- TODO optimise
-
--- substitute s1 with s2 in s3 (only whole string is matched)
-sub :: String -> String -> String -> String
-sub s1 s2 s3 = if s1 == s3 then s2 else s3
-
-substTree :: String -> String -> STree -> STree
-substTree s1 s2 (Node a b cs) = Node (sub s1 s2 a) b [substTree s1 s2 c | c <- cs]
 
 ------------------------------- Parser functions ------------------------------- 
 
@@ -233,10 +195,93 @@ sExpression = do x <- sFormula
                <|> do x <- sStatement
                       return x
 
+---------------------------- RESTATE HELPERS -----------------------------------
+
+-- returns a list resulting from a preorder traversal of tree t and
+-- applying s to each subtree 
+-- direct children of subtrees are skipped whenever the filter-condition
+-- f is not met; this is recursively communicated by setting b to False
+preorder :: (STreeClass a, Eq a) => (a -> b) ->  (a -> Bool) -> a -> Bool -> [b]
+preorder s f t b = if getSubtrees t == [] then val
+               else val ++  [x | t' <- (getSubtrees t), x <- preorder' t'] where
+                   preorder' t'' = if f t then preorder s f t'' True
+                                   else preorder s f t'' False
+                   val = if b then [s t] else []
+
+isVar :: STree -> Bool
+isVar = \x -> length (getSubtrees x) == 1
+
+deepVars :: STree -> [[Char]]
+deepVars t = rmdups [s | s <- preorder getSymbol isVar t True, s /= ""]
+
+minVarDepth :: String -> Proof -> Int
+minVarDepth s p = case depths of
+                       [] -> -1
+                       _  -> minimum depths
+                       where
+                           depths = [second $ pl | pl <- p,
+                                                   elem s (vars (third pl))]
+
+freeVars :: STree -> Proof -> [[Char]]
+freeVars t p = [v | v <- deepVars t,
+                    or [minVarDepth v p == -1, curDepth p < minVarDepth v p]] -- TODO optimise
+
+-- substitute s1 with s2 in s3 (only whole string is matched)
+sub :: String -> String -> String -> String
+sub s1 s2 s3 = if s1 == s3 then s2 else s3
+
+substTree :: String -> String -> STree -> STree
+substTree s1 s2 (Node a b cs) = Node (sub s1 s2 a) b [substTree s1 s2 c | c <- cs]
+
+---------------------------- SYNAPSIS HELPERS ----------------------------------
+
+vars :: (STreeClass a, SType a) => a -> [[Char]]
+vars tree = [getSymbol x4 | x1 <- filter (\x -> toType x == Statement) [tree],
+                            x2 <- filter (\x -> toType x == Atom) (getSubtrees x1),
+                            x3 <- filter (\x -> toType x == Formula) (getSubtrees x2),
+                            length (getSubtrees x3) == 1, -- TODO make more efficient 
+                            x4 <- filter (\x -> toType x == Symbol) (getSubtrees x3)]
+
+getLastBracket :: Proof -> Proof
+getLastBracket p = takeWhile (\x -> second x == curDepth p) (reverse p)
+
+pairLastBracket :: Proof -> (STree, STree)
+pairLastBracket p = (third $ last p', third $ head p') where p' = getLastBracket p
+
+stmtsWithDepthLT :: Int -> Proof -> [STree]
+stmtsWithDepthLT i p = [third pl | pl <- p, second pl < i]
+
+boundVars :: Proof -> [[Char]]
+boundVars p = [v | stmt <- stmts, v <- vars stmt] where
+    stmts = stmtsWithDepthLT lastStmtDepth p
+    lastStmtDepth = second $ last p
+
+lastContext :: Proof -> [[Char]]
+lastContext p = [v | pl <- getLastBracket p, v <- vars (third pl)]
+
+contextSpecifcVars :: Proof -> [[Char]]
+contextSpecifcVars p = rmdups $intersect [deepVars lastStmt, lastContext p] where
+    lastStmt = third $ last p
+
+outOfContextVars :: Proof -> [[Char]]
+outOfContextVars p = without (contextSpecifcVars p) (boundVars p)
+
 ------------------------- Functions generating STrees  ------------------------- 
 
+equals :: STree
+equals = (Node [] Equality [])
+
+implies :: STree
+implies = (Node [] Implication [])
+
+truth :: STree
+truth = Node [] Statement [Node [] Atom []]
+
+makeStatement :: [STree] -> STree
+makeStatement ts = Node [] Statement [Node [] Atom [Node [] Formula ts]]
+
 selfequateT :: Int -> STree -> STree
-selfequateT pos x = Node [] Statement [Node [] Atom [n, (Node [] Equality []), n]] where
+selfequateT pos x =  makeStatement [n, equals, n] where
                             n = toSTree (getAtom pos x)
 
 restateT :: [(STree, Int)] -> STree
@@ -245,6 +290,10 @@ restateT xs = Node [] Statement atomlist where
 
 assumeT :: String -> STree
 assumeT x = fst $ head $ parse sExpression x
+
+synapsisT :: Proof -> STree
+synapsisT p = makeStatement [(fst pair), implies, (snd pair)] where
+    pair = pairLastBracket p
 
 ------------------------- Functions generating Proofs  ------------------------- 
 
@@ -270,6 +319,8 @@ restate lps s2 p = p ++ [s] where
 ----------------------------------- Examples  ---------------------------------- 
 
 p = assume "[K][[K][b]e[[[c][d]f[a]:[b]]]][r]" []
-p1 = selfequate (1,1) p
+p0 = assume "[X]" p
+p1 = selfequate (1,1) p0
 p2 = restate [(1,2)] "y" p1
+p3 = selfequate (2,1) p2
 a = assumeT "[a][r][z][[a]and[b]=[k]]"
