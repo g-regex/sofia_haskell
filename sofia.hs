@@ -197,8 +197,8 @@ sExpression = do x <- sFormula
                <|> do x <- sStatement
                       return x
 
--- For consiseness, the following naming conventions for variables are
--- used:
+-- For consiseness, the following naming conventions for parameters are
+-- used.
 -- t (arbitrary STree)
 -- v (STree of type Symbol which contains a variable)
 -- p (Proof)
@@ -208,29 +208,44 @@ sExpression = do x <- sFormula
 -- s (String)
 -- c (Char)
 -- i (Int)
--- r ((String, String), r stands for 'rename')
+-- r ((String, String), 'r' stands for 'rename')
 -- y (TypeOfNode)
+--
+-- For function names the following conventions are used. Every function
+-- name is of the form prefixName, where "Name" should correlate to the
+-- meaning of the function and "prefix" correlates to the type of the
+-- function, when all arguments are provided. Options for "prefix" are:
+-- is (Bool)
+-- vars (STree of type Symbol which contains a variable)
+-- num/max/min (Int)
+-- str (String)
+-- tree (STree)
+-- rn ((String, String), 'rn' stands for 'rename')
 
 ---------------------------- RESTATE HELPERS -----------------------------------
 
 -- returns a list resulting from a preorder traversal of tree t and
--- applying s to each subtree; direct children of subtrees are skipped
--- whenever the filter-condition f is not met; this is recursively
--- communicated by setting b to False
+-- applying s to each subtree; direct children of subtrees are skipped whenever
+-- the filter-condition f is not met; this is recursively communicated by
+-- setting b to False
 preorder :: (STreeClass a, Eq a) => (a -> b) ->  (a -> Bool) -> a -> Bool -> [b]
-preorder s f t b = if getSubtrees t == [] then ts
-               else ts ++  [x | t' <- (getSubtrees t), x <- preorder' t'] where
-                   preorder' t' = if f t
-                                   then preorder s f t' True
-                                   else preorder s f t' False
-                   ts = if b then [s t] else []
+preorder s f t b = if getSubtrees t == []
+  then ts
+  else ts ++ [ x | t' <- (getSubtrees t), x <- preorder' t' ] where
+  preorder' t' = if f t then preorder s f t' True else preorder s f t' False
+  ts = if b then [s t] else []
 
+-- 'True' if an STree directly corresponds to a variable; 'False'
+-- otherwise.
 isVar :: STree -> Bool
 isVar = \t -> length (getSubtrees t) == 1
 
-deepVars :: STree -> [[Char]]
-deepVars t = rmdups [s | s <- preorder getSymbol isVar t True, s /= ""]
+-- A list of all variables contained in a tree (does a deep search for
+-- variables).
+varsDeep :: STree -> [[Char]]
+varsDeep t = rmdups [s | s <- preorder getSymbol isVar t True, s /= ""]
 
+-- The minimum depth of the occurrence of a variable in a given proof.
 minVarDepth :: String -> Proof -> Int
 minVarDepth s p = case depths of
                        [] -> -1
@@ -239,44 +254,53 @@ minVarDepth s p = case depths of
                            depths = [second $ pl | pl <- p,
                                                    elem s (vars (third pl))]
 
-freeVars :: STree -> Proof -> [[Char]]
-freeVars t p = [v | v <- deepVars t,
+-- A list of free variables in a specific statement with respect to a given
+-- proof.
+varsFree :: STree -> Proof -> [[Char]]
+varsFree t p = [v | v <- varsDeep t,
                     or [minVarDepth v p == -1, curDepth p < minVarDepth v p]]
                     -- TODO optimise
 
--- substitute s1 with s2 in s3 (only whole string is matched)
-{-sub :: String -> String -> String -> String
-sub s1 s2 s3 = if s1 == s3 then s2 else s3
-
-substTree :: String -> String -> STree -> STree
-substTree s1 s2 (Node a b cs) = Node (sub s1 s2 a) b [substTree s1 s2 c | c <- cs]-}
-
-sub' :: [(String, String)] -> String -> String
-sub' rs s = if elem s $ map fst rs
+-- Replaces a string x with another string y, if the list rs contains
+-- a pair (x, y); otherwise x remains unchanged.
+strSub :: [(String, String)] -> String -> String
+strSub rs s = if elem s $ map fst rs
                 then head [snd r | r <- rs, fst r == s]
                 else s
 
-substTree' :: [(String, String)] -> STree -> STree
-substTree' rs (Node s y ts) = Node (sub' rs s) y [substTree' rs t | t <- ts]
+-- Replaces an STree x with another STree y, if the list rs contains
+-- a pair (x', y'), where x', y' are the string representations of the
+-- trees x, y; otherwise x remains unchanged.
+treeSub :: [(String, String)] -> STree -> STree
+treeSub rs (Node s y ts) = Node (strSub rs s) y [treeSub rs t | t <- ts]
 
-renameVar :: String -> [String] -> String
-renameVar s ss = head (without ([s] ++  [s ++ s' | s' <- ss']) ss) where
+-- Replaces a string "x" with "x'", "x''", "x'''", "x1", "x2", ... based on
+-- the availability as indicated by the list of unavailable variables.
+strRenameVar :: String -> [String] -> String
+strRenameVar s ss = head (without ([s] ++  [s ++ s' | s' <- ss']) ss) where
     ss' = ["'", "''", "'''"] ++ [show i | i <- [1..]]
 
-pairVar :: String -> Proof -> (String, String)
-pairVar s p = (s, renameVar s  (boundVars 1 p))
+-- Given a variable x, a pair (x, x') is created, where x' is the next
+-- available alternative name for x.
+rnVar :: String -> Proof -> (String, String)
+rnVar s p = (s, strRenameVar s  (boundVars 1 p))
 
-pairVarList :: [String] -> Proof -> [(String, String)]
-pairVarList ss p = [pairVar s p | s <- ss]
+-- Given a list of variables x1, x2, ... pairs (x1, x1'), (x2, x2') are created,
+-- where the xi' are the next available alternatives name for the xi.
+rnVarList :: [String] -> Proof -> [(String, String)]
+rnVarList ss p = [rnVar s p | s <- ss]
 
-substAllVars :: STree -> Proof -> STree
-substAllVars t p = substTree' rs t where
-    rs = pairVarList ss p
-    ss = deepVars t
+-- Replaces all variable names in a given expression by the next available
+-- alternative name.
+treeAutoSub :: STree -> Proof -> STree
+treeAutoSub t p = treeSub rs t where
+    rs = rnVarList ss p
+    ss = varsDeep t
 
-substVar :: String -> String -> STree -> Proof -> STree
-substVar s s' t p = substTree' ss t where
-    ss = [(s, renameVar s'  (boundVars 1 p))]
+-- Renames one variable in an expression to a provided new name.
+treeSubOne :: String -> String -> STree -> Proof -> STree
+treeSubOne s s' t p = treeSub ss t where
+    ss = [(s, strRenameVar s'  (boundVars 1 p))]
 
 ---------------------------- SYNAPSIS HELPERS ----------------------------------
 
@@ -302,10 +326,10 @@ boundVars i p = [v | stmt <- stmts, v <- vars stmt] where
     lastStmtDepth = second $ last p
 
 lastContext :: Proof -> [[Char]]
-lastContext p = without [v | pl <- getLastBracket p, v <- deepVars (third pl)] (boundVars 0 p)
+lastContext p = without [v | pl <- getLastBracket p, v <- varsDeep (third pl)] (boundVars 0 p)
 
 contextSpecifcVars :: Proof -> [[Char]]
-contextSpecifcVars p = rmdups $intersect [deepVars lastStmt, lastContext p] where
+contextSpecifcVars p = rmdups $intersect [varsDeep lastStmt, lastContext p] where
     lastStmt = third $ last p
 
 ------------------------- Functions generating STrees  ------------------------- 
@@ -343,7 +367,7 @@ synapsisT p = makeStatementF (newVars ++ [(fst pair), implies, (snd pair)]) wher
 
 assume :: String -> Proof -> Proof
 assume s p = p ++ [(1 + curLineNo p, 1 + curDepth p, t, Assumption)] where
-    t = substAllVars (assumeT s) p
+    t = treeAutoSub (assumeT s) p
 
 --selfequate :: (Int, Int) -> STree -> STree
 selfequate :: (Int, Int) -> Proof -> Proof
@@ -356,9 +380,9 @@ restate :: [(Int, Int)] -> String -> Proof -> Proof
 restate lps s2 p = p ++ [s] where
     t  = restateT [(stmt, pos) | (line, pos) <- lps,
                                 stmt <- [third $ getIndex line p]]
-    s  = (1 + curLineNo p, curDepth p, substVar v s2 t p, r)
+    s  = (1 + curLineNo p, curDepth p, treeSubOne v s2 t p, r)
     v = if fv == [] then "" else head fv
-    fv = freeVars t p
+    fv = varsFree t p
     r  = Restate lps
 
 ----------------------------------- Examples  ---------------------------------- 
