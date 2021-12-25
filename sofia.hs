@@ -53,7 +53,8 @@ toString :: Printable a => [a] -> String
 toString [] = ""
 toString (x:xs) = (printable x) ++ (toString xs)
 
-data TypeOfNode = Atom | Statement | Formula | Implication | Equality | Symbol | Error deriving (Show, Eq)
+data TypeOfNode = Atom | Statement | Formula | Implication | Equality | Symbol |
+                  Error deriving (Show, Eq)
 data Tree a b = Node [a] b [Tree a b] deriving (Eq) --deriving (Show)
 --              Node (a,b) [Tree a b] deriving (Show)
 
@@ -69,7 +70,8 @@ instance (Printable a, Show a, SType b, Show b) => Show (Tree a b) where
                                                      []   -> ""
                                                      x:xs -> (show x) ++ (showtree xs)
 
-data DeductionRule = Assumption | Selfequate (Int, Int) | Restate [(Int, Int)] deriving (Show)
+data DeductionRule = Assumption | Selfequate (Int, Int) | Restate [(Int, Int)]
+                     deriving (Show)
 
 type STree = Tree Char TypeOfNode
 type ProofLine = (Int, Int, STree, DeductionRule)
@@ -195,21 +197,36 @@ sExpression = do x <- sFormula
                <|> do x <- sStatement
                       return x
 
+-- For consiseness, the following naming conventions for variables are
+-- used:
+-- t (arbitrary STree)
+-- v (STree of type Symbol which contains a variable)
+-- p (Proof)
+-- pl (ProofLine)
+-- f (filter function)
+-- b (Boolean constant function)
+-- s (String)
+-- c (Char)
+-- i (Int)
+-- r ((String, String), r stands for 'rename')
+-- y (TypeOfNode)
+
 ---------------------------- RESTATE HELPERS -----------------------------------
 
 -- returns a list resulting from a preorder traversal of tree t and
--- applying s to each subtree 
--- direct children of subtrees are skipped whenever the filter-condition
--- f is not met; this is recursively communicated by setting b to False
+-- applying s to each subtree; direct children of subtrees are skipped
+-- whenever the filter-condition f is not met; this is recursively
+-- communicated by setting b to False
 preorder :: (STreeClass a, Eq a) => (a -> b) ->  (a -> Bool) -> a -> Bool -> [b]
-preorder s f t b = if getSubtrees t == [] then val
-               else val ++  [x | t' <- (getSubtrees t), x <- preorder' t'] where
-                   preorder' t'' = if f t then preorder s f t'' True
-                                   else preorder s f t'' False
-                   val = if b then [s t] else []
+preorder s f t b = if getSubtrees t == [] then ts
+               else ts ++  [x | t' <- (getSubtrees t), x <- preorder' t'] where
+                   preorder' t' = if f t
+                                   then preorder s f t' True
+                                   else preorder s f t' False
+                   ts = if b then [s t] else []
 
 isVar :: STree -> Bool
-isVar = \x -> length (getSubtrees x) == 1
+isVar = \t -> length (getSubtrees t) == 1
 
 deepVars :: STree -> [[Char]]
 deepVars t = rmdups [s | s <- preorder getSymbol isVar t True, s /= ""]
@@ -224,14 +241,42 @@ minVarDepth s p = case depths of
 
 freeVars :: STree -> Proof -> [[Char]]
 freeVars t p = [v | v <- deepVars t,
-                    or [minVarDepth v p == -1, curDepth p < minVarDepth v p]] -- TODO optimise
+                    or [minVarDepth v p == -1, curDepth p < minVarDepth v p]]
+                    -- TODO optimise
 
 -- substitute s1 with s2 in s3 (only whole string is matched)
-sub :: String -> String -> String -> String
+{-sub :: String -> String -> String -> String
 sub s1 s2 s3 = if s1 == s3 then s2 else s3
 
 substTree :: String -> String -> STree -> STree
-substTree s1 s2 (Node a b cs) = Node (sub s1 s2 a) b [substTree s1 s2 c | c <- cs]
+substTree s1 s2 (Node a b cs) = Node (sub s1 s2 a) b [substTree s1 s2 c | c <- cs]-}
+
+sub' :: [(String, String)] -> String -> String
+sub' rs s = if elem s $ map fst rs
+                then head [snd r | r <- rs, fst r == s]
+                else s
+
+substTree' :: [(String, String)] -> STree -> STree
+substTree' rs (Node s y ts) = Node (sub' rs s) y [substTree' rs t | t <- ts]
+
+renameVar :: String -> [String] -> String
+renameVar s ss = head (without ([s] ++  [s ++ s' | s' <- ss']) ss) where
+    ss' = ["'", "''", "'''"] ++ [show i | i <- [1..]]
+
+pairVar :: String -> Proof -> (String, String)
+pairVar s p = (s, renameVar s  (boundVars 1 p))
+
+pairVarList :: [String] -> Proof -> [(String, String)]
+pairVarList ss p = [pairVar s p | s <- ss]
+
+substAllVars :: STree -> Proof -> STree
+substAllVars t p = substTree' rs t where
+    rs = pairVarList ss p
+    ss = deepVars t
+
+substVar :: String -> String -> STree -> Proof -> STree
+substVar s s' t p = substTree' ss t where
+    ss = [(s, renameVar s'  (boundVars 1 p))]
 
 ---------------------------- SYNAPSIS HELPERS ----------------------------------
 
@@ -251,20 +296,17 @@ pairLastBracket p = (third $ last p', third $ head p') where p' = getLastBracket
 stmtsWithDepthLT :: Int -> Proof -> [STree]
 stmtsWithDepthLT i p = [third pl | pl <- p, second pl < i]
 
-boundVars :: Proof -> [[Char]]
-boundVars p = [v | stmt <- stmts, v <- vars stmt] where
-    stmts = stmtsWithDepthLT lastStmtDepth p
+boundVars :: Int -> Proof -> [[Char]]
+boundVars i p = [v | stmt <- stmts, v <- vars stmt] where
+    stmts = stmtsWithDepthLT (lastStmtDepth + i) p
     lastStmtDepth = second $ last p
 
 lastContext :: Proof -> [[Char]]
-lastContext p = [v | pl <- getLastBracket p, v <- vars (third pl)]
+lastContext p = without [v | pl <- getLastBracket p, v <- deepVars (third pl)] (boundVars 0 p)
 
 contextSpecifcVars :: Proof -> [[Char]]
 contextSpecifcVars p = rmdups $intersect [deepVars lastStmt, lastContext p] where
     lastStmt = third $ last p
-
-outOfContextVars :: Proof -> [[Char]]
-outOfContextVars p = without (contextSpecifcVars p) (boundVars p)
 
 ------------------------- Functions generating STrees  ------------------------- 
 
@@ -277,11 +319,11 @@ implies = (Node [] Implication [])
 truth :: STree
 truth = Node [] Statement [Node [] Atom []]
 
-makeStatement :: [STree] -> STree
-makeStatement ts = Node [] Statement [Node [] Atom [Node [] Formula ts]]
+makeStatementF :: [STree] -> STree
+makeStatementF ts = Node [] Statement [Node [] Atom [Node [] Formula ts]]
 
 selfequateT :: Int -> STree -> STree
-selfequateT pos x =  makeStatement [n, equals, n] where
+selfequateT pos x =  makeStatementF [n, equals, n] where
                             n = toSTree (getAtom pos x)
 
 restateT :: [(STree, Int)] -> STree
@@ -292,13 +334,16 @@ assumeT :: String -> STree
 assumeT x = fst $ head $ parse sExpression x
 
 synapsisT :: Proof -> STree
-synapsisT p = makeStatement [(fst pair), implies, (snd pair)] where
-    pair = pairLastBracket p
+synapsisT p = makeStatementF (newVars ++ [(fst pair), implies, (snd pair)]) where
+    pair    = pairLastBracket p
+    newVars = [makeStatementF [Node v Symbol []] | v <- contextSpecifcVars p,
+                                                   not (elem v (vars (fst pair)))]
 
 ------------------------- Functions generating Proofs  ------------------------- 
 
 assume :: String -> Proof -> Proof
-assume s p = p ++ [(1 + curLineNo p, 1 + curDepth p, assumeT s, Assumption)]
+assume s p = p ++ [(1 + curLineNo p, 1 + curDepth p, t, Assumption)] where
+    t = substAllVars (assumeT s) p
 
 --selfequate :: (Int, Int) -> STree -> STree
 selfequate :: (Int, Int) -> Proof -> Proof
@@ -311,16 +356,17 @@ restate :: [(Int, Int)] -> String -> Proof -> Proof
 restate lps s2 p = p ++ [s] where
     t  = restateT [(stmt, pos) | (line, pos) <- lps,
                                 stmt <- [third $ getIndex line p]]
-    s  = (1 + curLineNo p, curDepth p, substTree s1 s2 t, r)
-    s1 = if fv == [] then "" else head fv
+    s  = (1 + curLineNo p, curDepth p, substVar v s2 t p, r)
+    v = if fv == [] then "" else head fv
     fv = freeVars t p
     r  = Restate lps
 
 ----------------------------------- Examples  ---------------------------------- 
 
 p = assume "[K][[K][b]e[[[c][d]f[a]:[b]]]][r]" []
-p0 = assume "[X]" p
+p0 = assume "[[X]=[X]][s]" p
 p1 = selfequate (1,1) p0
 p2 = restate [(1,2)] "y" p1
 p3 = selfequate (2,1) p2
+p4 = restate [(5,1)] "K" p3
 a = assumeT "[a][r][z][[a]and[b]=[k]]"
