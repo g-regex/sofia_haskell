@@ -1,0 +1,40 @@
+\documentclass{standalone}
+
+\usepackage[utf8]{inputenc}
+\usepackage{mathtools} 
+\usepackage{booktabs}
+
+\begin{document}
+
+\newcommand{\expression}{\langle\texttt{expression}\rangle}
+\newcommand{\statement}{\langle\texttt{statement}\rangle}
+\newcommand{\formula}{\langle\texttt{formula}\rangle}
+\newcommand{\formulator}{\langle\texttt{formulator}\rangle}
+\newcommand{\character}{\langle\texttt{character}\rangle}
+\newcommand{\atom}{\langle\texttt{atom}\rangle}
+\newcommand{\symb}{\langle\texttt{symbol}\rangle}
+
+\begin{tabular}{lll}
+$\expression$   & $\coloneqq$ &	$\formula \Big| \statement$                   \\
+$\formula$      & $\coloneqq$ &	$\formulator \bigg[ \statement \Big\{
+                                 \formulator \statement \Big\} \Big[
+                                 \formulator \Big] \bigg]$                    \\
+                &             &	$\Big| \statement \formulator \Big\{ \statement
+                                 \formulator \Big\} \Big[ \statement \Big]$   \\
+$\statement$    & $\coloneqq$ & $\atom \Big\{ \atom \Big\}$                   \\
+$\atom$		    & $\coloneqq$ & $\textrm{`['} \formula \Big| \statement
+                                 \textrm{`]'}$                                \\
+$\formulator$   & $\coloneqq$ & $\textrm{`:'} \Big| \textrm{`='} \Big| \symb$ \\
+$\symb$         & $\coloneqq$ & $\character \Big\{ \character \Big\}$         \\
+$\character$	& $\coloneqq$ & $\textrm{`a'} \Big| \dots \Big| \textrm{`z'}
+                                 \Big| \textrm{`A'} \Big| \dots \Big|
+                                 \textrm{`Z'} \Big| \textrm{`0'} \Big| \dots
+                                 \Big| \textrm{`9'} \Big| \textrm{`+'} \Big|
+                                 \textrm{`-'} \Big| \textrm{`/'}
+                                 \Big| \textrm{`*'} \Big|\textrm{`\%'} \Big|
+                                 \textrm{`\textasciicircum'} \Big| \textrm{`\&'}
+                                 \Big| \textrm{`.'} \Big|\textrm{`?'} \Big|
+                                 \textrm{`!'} \Big| \textrm{`\_'}$
+\end{tabular}
+
+\end{document}

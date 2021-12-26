@@ -1,0 +1,44 @@
+\documentclass[notitlepage]{report}
+\usepackage{mystyle}
+\usepackage{titling}
+\usepackage{standalone}
+
+\pretitle{\begin{center}\Huge\bfseries}
+\posttitle{\par\end{center}}
+\preauthor{\begin{center}\Large\ttfamily}
+\postauthor{\end{center}}
+\predate{\par\large\centering}
+\postdate{\par}
+
+\title{Sofia/Haskell}
+\author{Gregor Feierabend}
+\date{\today}
+
+
+\begin{document}
+%\begin{titlepage}
+%\begin{haddocktitle}
+%Sofia/Haskell documentation
+%\end{haddocktitle}
+%\end{titlepage}
+
+\maketitle
+
+\begingroup
+\let\clearpage\relax
+\tableofcontents
+\endgroup
+
+
+\chapter{Sofia Grammar}
+\begin{figure}[h!]
+	\input{figures/ebnf}
+	\caption{EBNF of the Sofia language}
+\end{figure}
+
+\chapter{Source Code Reference Sofia Parser}
+\input{haddock/SofiaParser}
+
+\chapter{Source Code Reference Sofia}
+\input{haddock/Sofia}
+\end{document}
