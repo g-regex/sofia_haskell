@@ -53,23 +53,27 @@ sSymbol = do       x <- sCharacter
                    return [y | y <- (x:xs), y /= ' ']
 
 sFormulator :: Parser SofiaTree
-sFormulator = do x <- specialChar ':'; return (newSofiaTree [] Implication [])
-               <|> do x <- specialChar '='; return (newSofiaTree [] Equality [])
-               <|> do x <- sSymbol; return (newSofiaTree x Symbol [])
+sFormulator = 
+        do x <- specialChar ':'
+           return (newSofiaTree [] Implication [])
+           <|> do
+                x <- specialChar '='; return (newSofiaTree [] Equality [])
+                <|> do x <- sSymbol; return (newSofiaTree x Symbol [])
 
 sAtom :: Parser SofiaTree
-sAtom = do specialChar '[';
-             x <- sFormula;
-             specialChar ']';
-             return (newSofiaTree "" Atom [x])
-           <|> do specialChar '[';
-                  x <- sStatement;
-                  specialChar ']';
+sAtom = do
+          specialChar '['
+          x <- sFormula
+          specialChar ']'
+          return (newSofiaTree "" Atom [x])
+           <|> do specialChar '['
+                  x <- sStatement
+                  specialChar ']'
                   return (newSofiaTree "" Atom [x])
 
 sStatement :: Parser SofiaTree
-sStatement = do x <- sAtom;
-                xs <- many sAtom;
+sStatement = do x <- sAtom
+                xs <- many sAtom
                 return (newSofiaTree "" Statement (x:xs))
 
 sFormula :: Parser SofiaTree
@@ -77,19 +81,19 @@ sFormula = do x <- sFormulator;
               do y <- sStatement;
                  zs <- option (do z1 <- sFormulator; z2 <- sStatement; return [z1, z2])
                  do f <- sFormulator; return (newSofiaTree "" Formula ([x, y] ++ zs ++ [f]))
-                  <|> return (newSofiaTree "" Formula ([x, y] ++ zs))
-               <|> return (newSofiaTree "" Formula [x])
-             <|> do x <- sStatement;
-                    y <- sFormulator;
-                    zs <- option (do z1 <- sStatement; z2 <- sFormulator; return [z1, z2])
-                    do f <- sStatement; return (newSofiaTree "" Formula ([x, y] ++ zs ++ [f]))
-                     <|> return (newSofiaTree "" Formula ([x, y] ++ zs))
+                    <|> return (newSofiaTree "" Formula ([x, y] ++ zs))
+                 <|> return (newSofiaTree "" Formula [x])
+              <|> do x <- sStatement;
+                     y <- sFormulator;
+                     zs <- option (do z1 <- sStatement; z2 <- sFormulator; return [z1, z2])
+                     do f <- sStatement; return (newSofiaTree "" Formula ([x, y] ++ zs ++ [f]))
+                        <|> return (newSofiaTree "" Formula ([x, y] ++ zs))
 
 sExpression :: Parser SofiaTree
 sExpression = do x <- sFormula
                  return x
-               <|> do x <- sStatement
-                      return x
+                 <|> do x <- sStatement
+                        return x
 
 assumeT :: String -> SofiaTree
 assumeT x = fst $ head $ parse sExpression x
