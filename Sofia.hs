@@ -12,10 +12,11 @@ Portability : POSIX
 
 The Sofia proof assistant.
 -}
-module Sofia (Proof, ProofLine, assume, restate, selfequate)
+module Sofia (Proof, assume, restate, selfequate)
 where
 --------------------------- Using Graham Hutton's code -------------------------
 import SofiaParser
+import SofiaTree
 import ListHelpers
 
 --------------------------------------------------------------------------------
