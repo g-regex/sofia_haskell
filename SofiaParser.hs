@@ -14,11 +14,21 @@ The parser for the Sofia proof assistant.
 
 --module SofiaParser where
 module SofiaParser
-    (assumeT) where
+    (assumeT,
+     SofiaTree,
+     DeductionRule (Assumption, Selfequate, Restate),
+     TypeOfNode (Atom, Statement, Formula, Implication, Equality, Symbol,
+                 Error),
+     newSofiaTree,
+     getAtom,
+     getSubtrees,
+     getSymbol,
+     toSofiaTree,
+     toType) where
 
 import Parsing
-import ListHelpers
 import SofiaTree
+import ListHelpers
 
 -- parses a list of similar tokens zero or more times (behaves like curly
 -- braces in EBNF)
@@ -34,8 +44,8 @@ legalChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['%',' ']
 sCharacter :: Parser Char
 sCharacter = sat (\x -> elem x legalChars)
 
-parseSpecialChar :: Char -> Parser Char
-parseSpecialChar x = sat (== x)
+specialChar :: Char -> Parser Char
+specialChar x = sat (== x)
 
 sSymbol :: Parser String
 sSymbol = do       x <- sCharacter
@@ -43,33 +53,24 @@ sSymbol = do       x <- sCharacter
                    return [y | y <- (x:xs), y /= ' ']
 
 sFormulator :: Parser SofiaTree
-sFormulator = do
-        x <- parseSpecialChar ':'
-        return (newSofiaTree [] Implication [])
-               <|> do
-                   x <- parseSpecialChar '='
-                   return (newSofiaTree [] Equality [])
-               <|> do
-                   x <- sSymbol
-                   return (newSofiaTree x Symbol [])
+sFormulator = do x <- specialChar ':'; return (newSofiaTree [] Implication [])
+               <|> do x <- specialChar '='; return (newSofiaTree [] Equality [])
+               <|> do x <- sSymbol; return (newSofiaTree x Symbol [])
 
 sAtom :: Parser SofiaTree
-sAtom = do
-             parseSpecialChar '['
-             x <- sFormula
-             parseSpecialChar ']'
+sAtom = do specialChar '[';
+             x <- sFormula;
+             specialChar ']';
              return (newSofiaTree "" Atom [x])
-           <|> do
-                  parseSpecialChar '['
-                  x <- sStatement
-                  parseSpecialChar ']'
+           <|> do specialChar '[';
+                  x <- sStatement;
+                  specialChar ']';
                   return (newSofiaTree "" Atom [x])
 
 sStatement :: Parser SofiaTree
-sStatement = do
-        x <- sAtom
-        xs <- many sAtom
-        return (newSofiaTree "" Statement (x:xs))
+sStatement = do x <- sAtom;
+                xs <- many sAtom;
+                return (newSofiaTree "" Statement (x:xs))
 
 sFormula :: Parser SofiaTree
 sFormula = do x <- sFormulator;
@@ -92,19 +93,3 @@ sExpression = do x <- sFormula
 
 assumeT :: String -> SofiaTree
 assumeT x = fst $ head $ parse sExpression x
-
---getSubSofiaTrees :: (Printable a, SType b) => Tree a b -> [SofiaTree]
---getSubSofiaTrees t = [toSofiaTree c | c <- getSubtrees t]
-
------------------------------------ DEBUGGING ----------------------------------
-{-varDepths :: [Char] -> SofiaTree -> Int -> [Int]
-varDepths sym tree i = if isFormulator tree then [] else 
-                     case elem sym (vars tree) of
-                       True -> i : rest
-                       False -> rest
-                       where rest = [x | subtree <- (getSubSofiaTrees tree), x <- (varDepths sym subtree incr)]
-                             incr = if (toType tree == Statement) then i + 1 else i
-
-preorderDepth :: SofiaTree -> Int -> [(Int, TypeOfNode)]
-preorderDepth t i = if getSubSofiaTrees t == [] then [(i, toType t)]
-                    else (i, toType t) : [x | t' <- (getSubSofiaTrees t), x <- preorderDepth t' (i+1)] -}

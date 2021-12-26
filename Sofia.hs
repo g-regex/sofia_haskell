@@ -16,7 +16,6 @@ module Sofia (Proof, assume, restate, selfequate)
 where
 --------------------------- Using Graham Hutton's code -------------------------
 import SofiaParser
-import SofiaTree
 import ListHelpers
 
 --------------------------------------------------------------------------------
