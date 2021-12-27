@@ -37,15 +37,17 @@ main = pure ()
 
 -- $naming
 -- For consiseness and readability of the source code, the following naming
--- conventions for function parameters are used. These parameter names are,
--- however, invisible to the user and are only of interest when reading the
--- function definitions. The following list shows the parameter names as
--- well as the type of the parameter in brackets. If within the function
--- definition multiple variables share the same type, one or two
--- apostrophes or the numbers 3, 4, 5, ... are appended to the variable
--- names (in this order). If lists of the respective types are used, then
--- an __s__ (__ss__ for lists of lists and so on) is appended to the
--- respective variable name.
+-- conventions for names of functions and function parameters are used
+-- within the @Sofia@ module (but not necessarily within the @SofiaTree@ or
+-- @SofiaParser@ modules). Where appropriate (in terms of readability)
+-- these conventions are not strictly adhered to. The parameter names are
+-- invisible to the user and are only of interest when reading the function
+-- definitions. The following list shows the parameter names as well as the
+-- type of the parameter in brackets. If within the function definition
+-- multiple variables share the same type, one or two apostrophes or the
+-- numbers 3, 4, 5, ... are appended to the variable names (in this order).
+-- If lists of the respective types are used, then an __s__ (__ss__ for
+-- lists of lists and so on) is appended to the respective variable name.
 --
 --
 --      * @t@ (arbitrary @SofiaTree@)
@@ -77,7 +79,7 @@ main = pure ()
 --
 --      * @is@ (@Bool@)
 --
---      * @vars@ (@SofiaTree@ of type @Symbol@ which contains a variable)
+--      * @vars@ (@String@ containing a variable name)
 --
 --      * @num@ \/ @max@ \/ @min@ (@Int@)
 --
@@ -101,29 +103,47 @@ type ProofLine = (Int, Int, SofiaTree, DeductionRule)
 -- |A Sofia proof is a sequence of `ProofLine`s
 type Proof = [ProofLine]
 
-first :: (a, b, c, d) -> a
-first (a, _, _, _) = a
+numLine :: ProofLine -> Int
+numLine (a, _, _, _) = a
 
-second :: (a, b, c, d) -> b
-second (_, b, _, _) = b
+numDepth :: ProofLine -> Int
+numDepth (_, b, _, _) = b
 
-third :: (a, b, c, d) -> c
-third (_, _, c, _) = c
+treeFromLn :: ProofLine -> SofiaTree
+treeFromLn (_, _, c, _) = c
 
-fourth :: (a, b, c, d) -> d
-fourth (_, _, _, d) = d
+-- NOTE: currently not in use
+ruleFromLn :: ProofLine -> DeductionRule
+ruleFromLn (_, _, _, d) = d
 
-curLineNo :: Proof -> Int
-curLineNo [] = 0
-curLineNo x = first $ last x
+-- NOTE: currently not in use
+numDepthAt :: Int -> Proof -> Int
+numDepthAt i p = numDepth $ getIndex i p
 
-curDepth :: Proof -> Int
-curDepth [] = -1
-curDepth x = second $ last x
+numCurLn :: Proof -> Int
+numCurLn [] = 0
+numCurLn x = numLine $ last x
 
-depthAt :: Int -> Proof -> Int
-depthAt i p = second $ getIndex i p
+numCurDepth :: Proof -> Int
+numCurDepth [] = -1
+numCurDepth x = numDepth $ last x
 
+treesWithDepthLT :: Int -> Proof -> [SofiaTree]
+treesWithDepthLT i p = [treeFromLn pl | pl <- p, numDepth pl < i]
+
+varsTopLvl :: SofiaTree -> [[Char]]
+varsTopLvl tree =
+    [getSymbol x4 | x1 <- filter (\x -> toType x == Statement) [tree],
+                    x2 <- filter (\x -> toType x == Atom) (getSubtrees x1),
+                    x3 <- filter (\x -> toType x == Formula) (getSubtrees x2),
+                    length (getSubtrees x3) == 1, -- TODO make more efficient 
+                    x4 <- filter (\x -> toType x == Symbol) (getSubtrees x3)]
+
+varsBound :: Int -> Proof -> [[Char]]
+varsBound i p =
+    [v | t <- ts, v <- varsTopLvl t] where
+        ts           = treesWithDepthLT (numLastDepth + i) p
+        numLastDepth = numDepth $ last p
 
 ---------------------------- RESTATE HELPERS -----------------------------------
 
@@ -132,11 +152,18 @@ depthAt i p = second $ getIndex i p
 -- the filter-condition f is not met; this is recursively communicated by
 -- setting b to False
 preorder :: (SofiaTree -> b) ->  (SofiaTree -> Bool) -> SofiaTree -> Bool -> [b]
-preorder s f t b = if getSubtrees t == []
-  then ts
-  else ts ++ [ x | t' <- (getSubtrees t), x <- preorder' t' ] where
-  preorder' t' = if f t then preorder s f t' True else preorder s f t' False
-  ts = if b then [s t] else []
+preorder s f t b =
+    if getSubtrees t == []
+    then ts
+    else ts ++ [ x | t' <- (getSubtrees t), x <- preorder' t' ] where
+        preorder' t' =
+            if f t
+            then preorder s f t' True
+            else preorder s f t' False
+        ts =
+            if b
+            then [s t]
+            else []
 
 -- |'True' if an SofiaTree directly corresponds to a variable; 'False'
 -- otherwise.
@@ -150,119 +177,131 @@ varsDeep t = rmdups [s | s <- preorder getSymbol isVar t True, s /= ""]
 
 -- |The minimum depth of the occurrence of a variable in a given proof.
 minVarDepth :: String -> Proof -> Int
-minVarDepth s p = case depths of
-                       [] -> -1
-                       _  -> minimum depths
-                       where
-                           depths = [second $ pl | pl <- p,
-                                                   elem s (vars (third pl))]
+minVarDepth s p =
+    case depths of
+         [] -> -1
+         _  -> minimum depths
+         where
+             depths = [numDepth $ pl | pl <- p,
+                                     elem s (varsTopLvl (treeFromLn pl))]
 
 -- |A list of free variables in a specific statement with respect to a given
 -- proof.
 varsFree :: SofiaTree -> Proof -> [[Char]]
 varsFree t p = [v | v <- varsDeep t,
-                    or [minVarDepth v p == -1, curDepth p < minVarDepth v p]]
+                    or [minVarDepth v p == -1, numCurDepth p < minVarDepth v p]]
                     -- TODO optimise
 
 -- |Replaces a string x with another string y, if the list rs contains
 -- a pair (x, y); otherwise x remains unchanged.
 strSub :: [(String, String)] -> String -> String
-strSub rs s = if elem s $ map fst rs
-                then head [snd r | r <- rs, fst r == s]
-                else s
+strSub rs s =
+    if elem s $ map fst rs
+    then head [snd r | r <- rs, fst r == s]
+    else s
 
 -- |Replaces an SofiaTree x with another SofiaTree y, if the list rs contains
 -- a pair (x', y'), where x', y' are the string representations of the
 -- trees x, y; otherwise x remains unchanged.
 treeSub :: [(String, String)] -> SofiaTree -> SofiaTree
---treeSub rs (newSofiaTrees y ts) = newSofiaTree(strSub rs s) y [treeSub rs t | t <- ts]
-treeSub rs t = newSofiaTree(strSub rs (getSymbol t)) (toType t) [treeSub rs t' | t' <- getSubtrees t]
+treeSub rs t =
+    newSofiaTree    (strSub rs (getSymbol t))
+                    (toType t)
+                    [treeSub rs t' | t' <- getSubtrees t]
 
 -- |Replaces a string "x" with "x'", "x''", "x'''", "x1", "x2", ... based on
 -- the availability as indicated by the list of unavailable variables.
 strRenameVar :: String -> [String] -> String
-strRenameVar s ss = head (without ([s] ++  [s ++ s' | s' <- ss']) ss) where
-    ss' = ["'", "''", "'''"] ++ [show i | i <- [1..]]
+strRenameVar s ss =
+    head (without ([s] ++  [s ++ s' | s' <- ss']) ss) where
+        ss' = ["'", "''", "'''"] ++ [show i | i <- [1..]]
 
 -- |Given a variable x, a pair (x, x') is created, where x' is the next
 -- available alternative name for x.
 rnVar :: String -> Proof -> (String, String)
-rnVar s p = (s, strRenameVar s  (boundVars 1 p))
+rnVar s p = (s, strRenameVar s (varsBound 1 p))
 
--- |Given a list of variables x1, x2, ... pairs (x1, x1'), (x2, x2') are created,
--- where the xi' are the next available alternatives name for the xi.
+-- |Given a list of variables x1, x2, ... pairs (x1, x1'), (x2, x2') are
+-- created, where the xi' are the next available alternatives name for the
+-- xi.
 rnVarList :: [String] -> Proof -> [(String, String)]
 rnVarList ss p = [rnVar s p | s <- ss]
 
 -- |Replaces all variable names in a given expression by the next available
 -- alternative name.
 treeAutoSub :: SofiaTree -> Proof -> SofiaTree
-treeAutoSub t p = treeSub rs t where
-    rs = rnVarList ss p
-    ss = varsDeep t
+treeAutoSub t p =
+    treeSub rs t where
+        rs = rnVarList ss p
+        ss = varsDeep t
 
 -- |Renames one variable in an expression to a provided new name.
 treeSubOne :: String -> String -> SofiaTree -> Proof -> SofiaTree
-treeSubOne s s' t p = treeSub ss t where
-    ss = [(s, strRenameVar s'  (boundVars 1 p))]
+treeSubOne s s' t p =
+    treeSub ss t where
+        ss = [(s, strRenameVar s'  (varsBound 1 p))]
 
 ---------------------------- SYNAPSIS HELPERS ----------------------------------
 
-vars :: SofiaTree -> [[Char]]
-vars tree = [getSymbol x4 | x1 <- filter (\x -> toType x == Statement) [tree],
-                            x2 <- filter (\x -> toType x == Atom) (getSubtrees x1),
-                            x3 <- filter (\x -> toType x == Formula) (getSubtrees x2),
-                            length (getSubtrees x3) == 1, -- TODO make more efficient 
-                            x4 <- filter (\x -> toType x == Symbol) (getSubtrees x3)]
-
-getLastBracket :: Proof -> Proof
-getLastBracket p = takeWhile (\x -> second x == curDepth p) (reverse p)
+proofLastBracket :: Proof -> Proof
+proofLastBracket p = takeWhile (\x -> numDepth x == numCurDepth p) (reverse p)
 
 pairLastBracket :: Proof -> (SofiaTree, SofiaTree)
-pairLastBracket p = (third $ last p', third $ head p') where p' = getLastBracket p
+pairLastBracket p =
+    (treeFromLn $ last p', treeFromLn $ head p') where p' = proofLastBracket p
 
-stmtsWithDepthLT :: Int -> Proof -> [SofiaTree]
-stmtsWithDepthLT i p = [third pl | pl <- p, second pl < i]
+varsLastContext :: Proof -> [[Char]]
+varsLastContext p =
+    without [v | pl <- proofLastBracket p,
+                  v <- varsDeep (treeFromLn pl)]
+            (varsBound 0 p)
 
-boundVars :: Int -> Proof -> [[Char]]
-boundVars i p = [v | stmt <- stmts, v <- vars stmt] where
-    stmts = stmtsWithDepthLT (lastStmtDepth + i) p
-    lastStmtDepth = second $ last p
-
-lastContext :: Proof -> [[Char]]
-lastContext p = without [v | pl <- getLastBracket p, v <- varsDeep (third pl)] (boundVars 0 p)
-
-contextSpecifcVars :: Proof -> [[Char]]
-contextSpecifcVars p = rmdups $intersect [varsDeep lastStmt, lastContext p] where
-    lastStmt = third $ last p
+varsContextSpecific :: Proof -> [[Char]]
+varsContextSpecific p =
+    rmdups $intersect [varsDeep lastStmt, varsLastContext p] where
+        lastStmt = treeFromLn $ last p
 
 ------------------------- Functions generating SofiaTrees  ------------------------- 
 
-equals :: SofiaTree
-equals = (newSofiaTree[] Equality [])
+treeEQ :: SofiaTree
+treeEQ = (newSofiaTree[] Equality [])
 
-implies :: SofiaTree
-implies = (newSofiaTree[] Implication [])
+treeIMP :: SofiaTree
+treeIMP = (newSofiaTree[] Implication [])
 
-truth :: SofiaTree
-truth = newSofiaTree[] Statement [newSofiaTree[] Atom []]
+treeTRUTH :: SofiaTree
+treeTRUTH = newSofiaTree[] Statement [newSofiaTree[] Atom []]
 
-makeStatementF :: [SofiaTree] -> SofiaTree
-makeStatementF ts = newSofiaTree[] Statement [newSofiaTree[] Atom [newSofiaTree[] Formula ts]]
+treeSTMT :: [SofiaTree] -> SofiaTree
+treeSTMT ts =
+        newSofiaTree []
+                     Statement
+                     [newSofiaTree[] Atom [newSofiaTree[] Formula ts]]
 
-selfequateT :: Int -> SofiaTree -> SofiaTree
-selfequateT pos x =  makeStatementF [n, equals, n] where
-                            n = toSofiaTree (getAtom pos x)
+treeDeduceSELF :: SofiaTree -> Int -> SofiaTree
+treeDeduceSELF t i = treeSTMT [statement, treeEQ, statement] where
+    statement = getAtom i t
 
-restateT :: [(SofiaTree, Int)] -> SofiaTree
-restateT xs = newSofiaTree[] Statement atomlist where
-    atomlist = [getAtom (snd $ x) (fst $ x) | x <- xs]
+treeDeduceREST :: [(SofiaTree, Int)] -> SofiaTree
+treeDeduceREST xs = newSofiaTree [] Statement atoms where
+    atoms = [getAtom (snd $ x) (fst $ x) | x <- xs]
 
-synapsisT :: Proof -> SofiaTree
-synapsisT p = makeStatementF (newVars ++ [(fst pair), implies, (snd pair)]) where
-    pair    = pairLastBracket p
-    newVars = [makeStatementF [newSofiaTree v Symbol []] | v <- contextSpecifcVars p,
-                                                   not (elem v (vars (fst pair)))]
+treeDeduceSYN :: Proof -> SofiaTree
+treeDeduceSYN p = treeSTMT (ts ++ [(fst pair), treeIMP, (snd pair)])
+   where
+    pair    = pairLastBracket p -- ordered pair containing the first and the
+                                -- last statement of the last bracket in p
+    ts      = [treeSTMT [newSofiaTree v Symbol []]  -- statements introducing
+                                                    -- context specific
+                                                    -- variables
+              |
+              v <- varsContextSpecific p,
+              not (elem v (varsTopLvl (fst pair)))  -- exclude variables that
+                                                    -- were introduced in
+                                                    -- the first statement
+                                                    -- of the current
+                                                    -- bracket
+              ]
 
 ------------------------- Functions generating Proofs  ------------------------- 
 
@@ -271,24 +310,39 @@ synapsisT p = makeStatementF (newVars ++ [(fst pair), implies, (snd pair)]) wher
 -- the last @ProofLine@ in @p@) and the @SofiaTree@ in @pl@ is the result
 -- of parsing @s@.
 assume :: String -> Proof -> Proof
-assume s p = p ++ [(1 + curLineNo p, 1 + curDepth p, t, Assumption)] where
-    t = treeAutoSub (treeParse s) p
+assume s p = p ++ [pl]
+   where
+    pl = (1 + numCurLn p,   -- increase line number
+         1 + numCurDepth p, -- increase depth
+         t,
+         Assumption)
+    t  = treeAutoSub (treeParse s) p -- substitute reserved variable names
 
---selfequate :: (Int, Int) -> SofiaTree -> SofiaTree
 selfequate :: (Int, Int) -> Proof -> Proof
-selfequate (line, pos) p = p ++ [(1 + curLineNo p, curDepth p, t, r)] where
-    t = selfequateT pos (third $ getIndex line p)
-    r = Selfequate (line, pos)
+selfequate (line, col) p = p ++ [pl]
+   where
+    pl = (1 + numCurLn p,   -- increase line number
+         numCurDepth p,     -- keep depth the same
+         t,
+         Selfequate (line, col))
+    t  = treeDeduceSELF (treeFromLn $ getIndex line p) col
 
---restate :: [(Int, Int)] -> SofiaTree -> SofiaTree
 restate :: [(Int, Int)] -> String -> Proof -> Proof
-restate lps s2 p = p ++ [s] where
-    t  = restateT [(stmt, pos) | (line, pos) <- lps,
-                                stmt <- [third $ getIndex line p]]
-    s  = (1 + curLineNo p, curDepth p, treeSubOne v s2 t p, r)
-    v = if fv == [] then "" else head fv
-    fv = varsFree t p
-    r  = Restate lps
+restate pos_list s p = p ++ [pl]
+   where
+    pl = (1 + numCurLn p,       -- increase line number
+         numCurDepth p,         -- keep depth the same
+         treeSubOne v s t p,    -- substitute first free variable with s
+         Restate pos_list)
+    t  = treeDeduceREST [(t', col)
+                        |
+                        (line, col) <- pos_list,
+                        t' <- [treeFromLn $ getIndex line p]
+                        ]
+    v  = if vs == []
+         then ""
+         else head vs           -- first free variable in t (or empty string)
+    vs = varsFree t p           -- list of all free variables in t
 
 ----------------------------------- Examples  ---------------------------------- 
 
