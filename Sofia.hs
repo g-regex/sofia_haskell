@@ -145,6 +145,17 @@ varsBound i p =
         ts           = treesWithDepthLT (numLastDepth + i) p
         numLastDepth = numDepth $ last p
 
+treesScope :: Int -> Proof -> [SofiaTree]
+treesScope i p = map treeFromLn p'
+   where
+    p'             = onebranch p''
+    p''            = filter (\pl -> numLine pl <= i) p
+    onebranch [pl] = [pl]
+    onebranch p3   = [pl] ++ onebranch (dropWhile f p3)
+                       where
+                        pl = head p3
+                        f  = (\pl' -> numLine pl' <= numLine pl)
+
 ---------------------------- RESTATE HELPERS -----------------------------------
 
 -- |Returns a list resulting from a preorder traversal of tree t and
@@ -203,11 +214,11 @@ strSub rs s =
 -- |Replaces an SofiaTree x with another SofiaTree y, if the list rs contains
 -- a pair (x', y'), where x', y' are the string representations of the
 -- trees x, y; otherwise x remains unchanged.
-treeSub :: [(String, String)] -> SofiaTree -> SofiaTree
-treeSub rs t =
+treeSubstSymbol :: [(String, String)] -> SofiaTree -> SofiaTree
+treeSubstSymbol rs t =
     newSofiaTree    (strSub rs (getSymbol t))
                     (toType t)
-                    [treeSub rs t' | t' <- getSubtrees t]
+                    [treeSubstSymbol rs t' | t' <- getSubtrees t]
 
 -- |Replaces a string "x" with "x'", "x''", "x'''", "x1", "x2", ... based on
 -- the availability as indicated by the list of unavailable variables.
@@ -229,16 +240,16 @@ rnVarList ss p = [rnVar s p | s <- ss]
 
 -- |Replaces all variable names in a given expression by the next available
 -- alternative name.
-treeAutoSub :: SofiaTree -> Proof -> SofiaTree
-treeAutoSub t p =
-    treeSub rs t where
+treeAutoSubstVars :: SofiaTree -> Proof -> SofiaTree
+treeAutoSubstVars t p =
+    treeSubstSymbol rs t where
         rs = rnVarList ss p
         ss = varsDeep t
 
 -- |Renames one variable in an expression to a provided new name.
-treeSubOne :: String -> String -> SofiaTree -> Proof -> SofiaTree
-treeSubOne s s' t p =
-    treeSub ss t where
+treeSubstOneSymbol :: String -> String -> SofiaTree -> Proof -> SofiaTree
+treeSubstOneSymbol s s' t p =
+    treeSubstSymbol ss t where
         ss = [(s, strRenameVar s'  (varsBound 1 p))]
 
 ---------------------------- SYNAPSIS HELPERS ----------------------------------
@@ -316,7 +327,7 @@ assume s p = p ++ [pl]
          1 + numCurDepth p, -- increase depth
          t,
          Assumption)
-    t  = treeAutoSub (treeParse s) p -- substitute reserved variable names
+    t  = treeAutoSubstVars (treeParse s) p -- substitute reserved variable names
 
 selfequate :: (Int, Int) -> Proof -> Proof
 selfequate (line, col) p = p ++ [pl]
@@ -332,7 +343,7 @@ restate pos_list s p = p ++ [pl]
    where
     pl = (1 + numCurLn p,       -- increase line number
          numCurDepth p,         -- keep depth the same
-         treeSubOne v s t p,    -- substitute first free variable with s
+         treeSubstOneSymbol v s t p,    -- substitute first free variable with s
          Restate pos_list)
     t  = treeDeduceREST [(t', col)
                         |
