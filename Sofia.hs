@@ -16,58 +16,13 @@ module Sofia (Proof, assume, restate, selfequate)
 where
 --------------------------- Using Graham Hutton's code -------------------------
 import SofiaParser
+import SofiaTree
 import ListHelpers
 
 --------------------------------------------------------------------------------
 
 main :: IO ()
 main = pure ()
-
--- inf = read "Infinity" :: Float
-
-curLineNo :: Proof -> Int
-curLineNo [] = 0
-curLineNo x = first $ last x
-
-curDepth :: Proof -> Int
-curDepth [] = -1
-curDepth x = second $ last x
-
-depthAt :: Int -> Proof -> Int
-depthAt i p = second $ getIndex i p
-
-first :: (a, b, c, d) -> a
-first (a, _, _, _) = a
-
-second :: (a, b, c, d) -> b
-second (_, b, _, _) = b
-
-third :: (a, b, c, d) -> c
-third (_, _, c, _) = c
-
-fourth :: (a, b, c, d) -> d
-fourth (_, _, _, d) = d
-
--- |A 4-tuple where the first element is the line number, the second
--- element is the line depth, the third is a Sofia expression and the
--- fourth element is the deduction rule that was used to obtain the Sofia
--- expression.
-type ProofLine = (Int, Int, SofiaTree, DeductionRule)
-
--- |A Sofia proof is a sequence of `ProofLine`s
-type Proof = [ProofLine]
-
--- TODO error checks (see below)
-{-line :: (Printable a, SType b) => [Tree a b] -> [SofiaTree]
-line []     = []
-line [x]   = [toSofiaTree x]
-line (x:xs) = (toSofiaTree x) : line (tail xs)-}
-
---------------------------------------------------------------------------------
-
-
-------------------------------- Parser functions ------------------------------- 
-
 
 -- For consiseness, the following naming conventions for parameters are
 -- used.
@@ -93,6 +48,52 @@ line (x:xs) = (toSofiaTree x) : line (tail xs)-}
 -- str (String)
 -- tree (SofiaTree)
 -- rn ((String, String), 'rn' stands for 'rename')
+
+-- |A 4-tuple where the first element is the line number, the second
+-- element is the line depth, the third is a Sofia expression and the
+-- fourth element is the deduction rule that was used to obtain the Sofia
+-- expression.
+type ProofLine = (Int, Int, SofiaTree, DeductionRule)
+
+-- |A Sofia proof is a sequence of `ProofLine`s
+type Proof = [ProofLine]
+
+first :: (a, b, c, d) -> a
+first (a, _, _, _) = a
+
+second :: (a, b, c, d) -> b
+second (_, b, _, _) = b
+
+third :: (a, b, c, d) -> c
+third (_, _, c, _) = c
+
+fourth :: (a, b, c, d) -> d
+fourth (_, _, _, d) = d
+
+curLineNo :: Proof -> Int
+curLineNo [] = 0
+curLineNo x = first $ last x
+
+curDepth :: Proof -> Int
+curDepth [] = -1
+curDepth x = second $ last x
+
+depthAt :: Int -> Proof -> Int
+depthAt i p = second $ getIndex i p
+
+-- inf = read "Infinity" :: Float
+
+-- TODO error checks (see below)
+{-line :: (Printable a, SType b) => [Tree a b] -> [SofiaTree]
+line []     = []
+line [x]   = [toSofiaTree x]
+line (x:xs) = (toSofiaTree x) : line (tail xs)-}
+
+--------------------------------------------------------------------------------
+
+
+------------------------------- Parser functions ------------------------------- 
+
 
 ---------------------------- RESTATE HELPERS -----------------------------------
 
