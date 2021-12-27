@@ -13,7 +13,7 @@ The parser for the Sofia proof assistant.
 -}
 
 --module SofiaParser where
-module SofiaParser (assumeT) where
+module SofiaParser (treeParse) where
 
 import Parsing
 import SofiaTree
@@ -99,5 +99,5 @@ sExpression =
       <|> do x <- sStatement
              return x
 
-assumeT :: String -> SofiaTree
-assumeT x = fst $ head $ parse sExpression x
+treeParse :: String -> SofiaTree
+treeParse x = fst $ head $ parse sExpression x

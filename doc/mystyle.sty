@@ -2,6 +2,9 @@
 % Haddock with the option --latex-style=mystyle.
 
 \usepackage{tabulary} % see below
+\usepackage{fancyvrb}
+
+\usepackage[newfloat]{minted}
 
 % make hyperlinks in the PDF, and add an expandabale index
 \usepackage[pdftex,bookmarks=true]{hyperref}
@@ -25,7 +28,7 @@
 \newcommand{\haddockverb}{\small}
 
 % an identifier: add an index entry
-\newcommand{\haddockid}[1]{\haddocktt{#1}\index{#1@\texttt{#1}}}
+\newcommand{\haddockid}[1]{\haddocktt{#1}\index{#1@\mintinline{haskell}{#1}}}
 
 % The tabulary environment lets us have a column that takes up ``the
 % rest of the space''.  Unfortunately it doesn't allow
@@ -35,15 +38,16 @@
 \newcommand{\haddockbeginconstrs}{\begin{tabulary}{\linewidth}{@{}llJ@{}}}
 \newcommand{\haddockbeginargs}{\begin{tabulary}{\linewidth}{@{}llJ@{}}}
 
-\newcommand{\haddocktt}[1]{{\small \texttt{#1}}}
-\newcommand{\haddockdecltt}[1]{{\small\bfseries \texttt{#1}}}
+\newcommand{\haddocktt}[1]{{\small \mintinline{haskell}{#1}}}
+\newcommand{\haddockdecltt}[1]{{\small\bfseries\texttt{#1}}}
 
 \makeatletter
 \newenvironment{haddockdesc}
                {\list{}{\labelwidth\z@ \itemindent-\leftmargin
                         \let\makelabel\haddocklabel}}
                {\endlist}
-\newcommand*\haddocklabel[1]{\hspace\labelsep\haddockdecltt{#1}}
+\newcommand*\haddocklabel[1]{\hspace\labelsep%\haddockdecltt{#1}
+#1}
 \makeatother
 
 % after a declaration, start a new line for the documentation.
@@ -121,3 +125,5 @@
 %\makeatletter
 %\patchcmd{\chapter}{\if@openright\cleardoublepage\else\clearpage\fi}{}{}{}
 %\makeatother
+
+\newcommand\m[1]{\mintinline{haskell}{#1}}

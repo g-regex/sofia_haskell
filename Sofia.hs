@@ -12,42 +12,85 @@ Portability : POSIX
 
 The Sofia proof assistant.
 -}
-module Sofia (Proof, assume, restate, selfequate)
-where
+module Sofia (
+    -- * Types
+    ProofLine,
+    Proof,
+
+    -- * Naming Convention
+    -- $naming
+
+    -- * Deductions
+    assume,
+    restate,
+    selfequate
+) where
+
 --------------------------- Using Graham Hutton's code -------------------------
 import SofiaParser
 import SofiaTree
 import ListHelpers
-
 --------------------------------------------------------------------------------
 
 main :: IO ()
 main = pure ()
 
--- For consiseness, the following naming conventions for parameters are
--- used.
--- t (arbitrary SofiaTree)
--- v (SofiaTree of type Symbol which contains a variable)
--- p (Proof)
--- pl (ProofLine)
--- f (filter function)
--- b (Boolean constant function)
--- s (String)
--- c (Char)
--- i (Int)
--- r ((String, String), 'r' stands for 'rename')
--- y (TypeOfNode)
+-- $naming
+-- For consiseness and readability of the source code, the following naming
+-- conventions for function parameters are used. These parameter names are,
+-- however, invisible to the user and are only of interest when reading the
+-- function definitions. The following list shows the parameter names as
+-- well as the type of the parameter in brackets. If within the function
+-- definition multiple variables share the same type, one or two
+-- apostrophes or the numbers 3, 4, 5, ... are appended to the variable
+-- names (in this order). If lists of the respective types are used, then
+-- an __s__ (__ss__ for lists of lists and so on) is appended to the
+-- respective variable name.
+--
+--
+--      * @t@ (arbitrary @SofiaTree@)
+--
+--      * @v@ (@SofiaTree@ of type @Symbol@ which contains a variable)
+--
+--      * @p@ (@Proof@)
+--
+--      * @pl@ (@ProofLine@)
+--
+--      * @f@ (filter function)
+--
+--      * @b@ (constant @Bool@ function)
+--
+--      * @s@ (@String@)
+--
+--      * @c@ (@Char@)
+--
+--      * @i@ (@Int@)
+--
+--      * @r@ (@(String, String)@, @r@ stands for /rename/)
+--
+--      * @y@ (@TypeOfNode@)
 --
 -- For function names the following conventions are used. Every function
--- name is of the form prefixName, where "Name" should correlate to the
--- meaning of the function and "prefix" correlates to the type of the
--- function, when all arguments are provided. Options for "prefix" are:
--- is (Bool)
--- vars (SofiaTree of type Symbol which contains a variable)
--- num/max/min (Int)
--- str (String)
--- tree (SofiaTree)
--- rn ((String, String), 'rn' stands for 'rename')
+-- name is of the form /prefixName/, where /Name/ should describe the
+-- purpose of the function and /prefix/ describes the return-type of the
+-- function, when all arguments are provided. Options for /prefix/ are:
+--
+--      * @is@ (@Bool@)
+--
+--      * @vars@ (@SofiaTree@ of type @Symbol@ which contains a variable)
+--
+--      * @num@ \/ @max@ \/ @min@ (@Int@)
+--
+--      * @str@ (@String@)
+--
+--      * @tree@ (@SofiaTree@)
+--
+--      * @rn@ (@(String, String)@, @rn@ stands for /rename/)
+--
+-- Functions not matching any of these return types (maybe because the
+-- return type is more general) are not prefixed by the above rule. That is
+-- for example the case for all deduction functions as their return type is
+-- @Proof@.
 
 -- |A 4-tuple where the first element is the line number, the second
 -- element is the line depth, the third is a Sofia expression and the
@@ -81,19 +124,6 @@ curDepth x = second $ last x
 depthAt :: Int -> Proof -> Int
 depthAt i p = second $ getIndex i p
 
--- inf = read "Infinity" :: Float
-
--- TODO error checks (see below)
-{-line :: (Printable a, SType b) => [Tree a b] -> [SofiaTree]
-line []     = []
-line [x]   = [toSofiaTree x]
-line (x:xs) = (toSofiaTree x) : line (tail xs)-}
-
---------------------------------------------------------------------------------
-
-
-------------------------------- Parser functions ------------------------------- 
-
 
 ---------------------------- RESTATE HELPERS -----------------------------------
 
@@ -101,7 +131,6 @@ line (x:xs) = (toSofiaTree x) : line (tail xs)-}
 -- applying s to each subtree; direct children of subtrees are skipped whenever
 -- the filter-condition f is not met; this is recursively communicated by
 -- setting b to False
---preorder :: (SofiaTreeClass a, Eq a) => (a -> b) ->  (a -> Bool) -> a -> Bool -> [b]
 preorder :: (SofiaTree -> b) ->  (SofiaTree -> Bool) -> SofiaTree -> Bool -> [b]
 preorder s f t b = if getSubtrees t == []
   then ts
@@ -179,7 +208,6 @@ treeSubOne s s' t p = treeSub ss t where
 
 ---------------------------- SYNAPSIS HELPERS ----------------------------------
 
---vars :: (SofiaTreeClass a, SType a) => a -> [[Char]]
 vars :: SofiaTree -> [[Char]]
 vars tree = [getSymbol x4 | x1 <- filter (\x -> toType x == Statement) [tree],
                             x2 <- filter (\x -> toType x == Atom) (getSubtrees x1),
@@ -238,9 +266,13 @@ synapsisT p = makeStatementF (newVars ++ [(fst pair), implies, (snd pair)]) wher
 
 ------------------------- Functions generating Proofs  ------------------------- 
 
+-- |Takes a @String@ @s@ and a @Proof@ @p@ and appends a new @ProofLine@
+-- @pl@ to @p@ where the assumption depth is increased by one (with respect to
+-- the last @ProofLine@ in @p@) and the @SofiaTree@ in @pl@ is the result
+-- of parsing @s@.
 assume :: String -> Proof -> Proof
 assume s p = p ++ [(1 + curLineNo p, 1 + curDepth p, t, Assumption)] where
-    t = treeAutoSub (assumeT s) p
+    t = treeAutoSub (treeParse s) p
 
 --selfequate :: (Int, Int) -> SofiaTree -> SofiaTree
 selfequate :: (Int, Int) -> Proof -> Proof
@@ -266,4 +298,4 @@ p1 = selfequate (1,1) p0
 p2 = restate [(1,2)] "y" p1
 p3 = selfequate (2,1) p2
 p4 = restate [(5,1)] "K" p3
-a = assumeT "[a][r][z][[a]and[b]=[k]]"
+a = treeParse "[a][r][z][[a]and[b]=[k]]"
