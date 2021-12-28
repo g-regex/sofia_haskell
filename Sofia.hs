@@ -1,4 +1,5 @@
--- {-# LANGUAGE FlexibleInstances #-}
+--{-# LANGUAGE FlexibleInstances #-}
+--{-# LANGUAGE UndecidableInstances #-}
 -- {-# OPTIONS_HADDOCK prune #-}
 
 {-|
@@ -98,12 +99,31 @@ main = pure ()
 -- element is the line depth, the third is a Sofia expression and the
 -- fourth element is the deduction rule that was used to obtain the Sofia
 -- expression.
-type ProofLine = (Int, Int, SofiaTree, DeductionRule)
+data ProofLineData a b c d = Line a b c d
+
+instance (Show a, Show b, Show c, Show d) => Show (ProofLineData a b c d) where
+    show (Line a b c d) = (show c) ++ " /L" ++ (show a) ++ ": " ++ (show d)
+
+type ProofLine = ProofLineData Int Int SofiaTree DeductionRule
+--type ProofLine = (Int, Int, SofiaTree, DeductionRule)
 
 -- |A Sofia proof is a sequence of `ProofLine`s
 type Proof = [ProofLine]
 
 numLine :: ProofLine -> Int
+numLine (Line a _ _ _) = a
+
+numDepth :: ProofLine -> Int
+numDepth (Line _ b _ _) = b
+
+treeFromLn :: ProofLine -> SofiaTree
+treeFromLn (Line _ _ c _) = c
+
+-- NOTE: currently not in use
+ruleFromLn :: ProofLine -> DeductionRule
+ruleFromLn (Line _ _ _ d) = d
+
+{-numLine :: ProofLine -> Int
 numLine (a, _, _, _) = a
 
 numDepth :: ProofLine -> Int
@@ -115,6 +135,7 @@ treeFromLn (_, _, c, _) = c
 -- NOTE: currently not in use
 ruleFromLn :: ProofLine -> DeductionRule
 ruleFromLn (_, _, _, d) = d
+-}
 
 -- NOTE: currently not in use
 numDepthAt :: Int -> Proof -> Int
@@ -314,28 +335,31 @@ treeDeduceSYN p = treeSTMT (ts ++ [t, treeIMP, t'])
 assume :: String -> Proof -> Proof
 assume s p = p ++ [pl]
    where
-    pl = (1 + numCurLn p,   -- increase line number
-         1 + numCurDepth p, -- increase depth
-         t,
-         Assumption)
+    pl = Line
+         (1 + numCurLn p)   -- increase line number
+         (1 + numCurDepth p) -- increase depth
+         t
+         Assumption
     t  = treeAutoSubstVars (treeParse s) p -- substitute reserved variable names
 
 selfequate :: (Int, Int) -> Proof -> Proof
 selfequate (line, col) p = p ++ [pl]
    where
-    pl = (1 + numCurLn p,   -- increase line number
-         numCurDepth p,     -- keep depth the same
-         t,
-         Selfequate (line, col))
+    pl = Line
+         (1 + numCurLn p)   -- increase line number
+         (numCurDepth p)     -- keep depth the same
+         t
+         (Selfequate (line, col))
     t  = treeDeduceSELF (treeFromLn $ getIndex line p) col
 
 restate :: [(Int, Int)] -> String -> Proof -> Proof
 restate pos_list s p = p ++ [pl]
    where
-    pl = (1 + numCurLn p,       -- increase line number
-         numCurDepth p,         -- keep depth the same
-         treeSubstOneSymbol v s t p,    -- substitute first free variable with s
-         Restate pos_list)
+    pl = Line
+         (1 + numCurLn p)       -- increase line number
+         (numCurDepth p)         -- keep depth the same
+         (treeSubstOneSymbol v s t p)    -- substitute first free variable with s
+         (Restate pos_list)
     t  = treeDeduceREST [(t', col)
                         |
                         (line, col) <- pos_list,
@@ -349,10 +373,11 @@ restate pos_list s p = p ++ [pl]
 synapsis :: Proof -> Proof
 synapsis p = p ++ [pl]
    where
-    pl = (1 + numCurLn p,               -- increase line number
-         numCurDepth p - 1,             -- decrease assumption depth
-         t,
-         Synapsis)
+    pl = Line
+         (1 + numCurLn p)               -- increase line number
+         (numCurDepth p - 1)             -- decrease assumption depth
+         (t)
+         Synapsis
     t  = treeDeduceSYN p
 
 ----------------------------------- Examples  ---------------------------------- 
