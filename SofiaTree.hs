@@ -118,19 +118,17 @@ instance (Show a, Show b, Show c, Show d) => Show (ProofLineData a b c d) where
 type ProofLine = ProofLineData Int Int SofiaTree DeductionRule
 --type ProofLine = (Int, Int, SofiaTree, DeductionRule)
 
-data PList a = PListItem a (PList a) | PListEnd
+data Proof = PListItem ProofLine Proof | PListEnd
 
-instance (Show a) => Show (PList a) where
+instance Show (Proof) where
     show (PListEnd)      = ""
     show (PListItem x PListEnd) = show x
     show (PListItem x y) = (show x) ++ "\n" ++ (show y)
 
-type Proof = PList ProofLine
-
-phead :: PList a -> a
+phead :: Proof -> ProofLine
 phead (PListItem x y) = x
 
-plast :: PList a -> a
+plast :: Proof -> ProofLine
 plast (PListItem x PListEnd) = x
 plast (PListItem x y) = plast y
 
@@ -139,15 +137,15 @@ PListItem v w <+> PListEnd = PListItem v w
 PListEnd <+> PListItem x y = PListItem x y
 PListItem v w <+> PListItem x y = PListItem v (w <+> (PListItem x y))
 
-preverse :: PList a -> PList a
+preverse :: Proof -> Proof
 preverse (PListItem x PListEnd) = PListItem x PListEnd
 preverse (PListItem x y) = (preverse y) <+> (PListItem x PListEnd)
 
-toProofFromList :: [a] -> PList a
+toProofFromList :: [ProofLine] -> Proof
 toProofFromList [] = PListEnd
 toProofFromList (pl:pls) = PListItem pl (toProofFromList pls)
 
-toListFromProof :: PList a -> [a]
+toListFromProof :: Proof -> [ProofLine]
 toListFromProof PListEnd = []
 toListFromProof (PListItem pl pls) = pl : (toListFromProof pls)
 
