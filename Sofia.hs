@@ -101,8 +101,8 @@ main = pure ()
 -- expression.
 
 -- NOTE: currently not in use
-numDepthAt :: Int -> [ProofLine] -> Int
-numDepthAt i p = numDepth $ getIndex i p
+numDepthAt :: [ProofLine] -> Int -> Int
+numDepthAt p i = numDepth $ getIndex i p
 
 numCurLn :: [ProofLine] -> Int
 numCurLn [] = 0
@@ -171,8 +171,8 @@ varsDeep t = rmdups [s | s <- preorderFilter getSymbol isVar t True, s /= ""]
 
 -- |A list of free variables in a specific statement with respect to a given
 -- proof.
-varsFree :: SofiaTree -> [ProofLine] -> [[Char]]
-varsFree t p =
+varsFree :: [ProofLine] -> SofiaTree -> [[Char]]
+varsFree p t =
     without [v | v <- varsDeep t]
             (varsBound p)
 
@@ -204,26 +204,26 @@ strRenameVar s ss =
 
 -- |Given a variable x, a pair (x, x') is created, where x' is the next
 -- available alternative name for x.
-rnVar :: String -> [ProofLine] -> (String, String)
-rnVar s p = (s, strRenameVar s (varsBound p))
+rnVar :: [ProofLine] -> String -> (String, String)
+rnVar p s = (s, strRenameVar s (varsBound p))
 
 -- |Given a list of variables x1, x2, ... pairs (x1, x1'), (x2, x2') are
 -- created, where the xi' are the next available alternatives name for the
 -- xi.
-rnVarList :: [String] -> [ProofLine] -> [(String, String)]
-rnVarList ss p = [rnVar s p | s <- ss]
+rnVarList :: [ProofLine] -> [String] -> [(String, String)]
+rnVarList p ss = [rnVar p s | s <- ss]
 
 -- |Replaces all variable names in a given expression by the next available
 -- alternative name.
-treeAutoSubstVars :: SofiaTree -> [ProofLine] -> SofiaTree
-treeAutoSubstVars t p =
+treeAutoSubstVars :: [ProofLine] -> SofiaTree -> SofiaTree
+treeAutoSubstVars p t =
     treeSubstSymbol rs t where
-        rs = rnVarList ss p
+        rs = rnVarList p ss
         ss = varsDeep t
 
 -- |Renames one variable in an expression to a provided new name.
-treeSubstOneSymbol :: String -> String -> SofiaTree -> [ProofLine] -> SofiaTree
-treeSubstOneSymbol s s' t p =
+treeSubstOneSymbol :: [ProofLine] -> String -> String -> SofiaTree -> SofiaTree
+treeSubstOneSymbol p s s' t =
     treeSubstSymbol ss t where
         ss = [(s, strRenameVar s'  (varsBound p))]
 
@@ -304,7 +304,8 @@ assume s p = p <+> pl
          (1 + numCurDepth p') -- increase depth
          t
          Assumption]
-    t  = treeAutoSubstVars (treeParse s) p' -- substitute reserved variable names
+    t  = treeAutoSubstVars p' (treeParse s) -- substitute reserved variable
+                                            -- names
 
 selfequate :: (Int, Int) -> Proof -> Proof
 selfequate (line, col) p = p <+> pl
@@ -324,7 +325,7 @@ restate pos_list s p = p <+> pl
     pl = toProofFromList [newLine
          (1 + numCurLn p')       -- increase line number
          (numCurDepth p')         -- keep depth the same
-         (treeSubstOneSymbol v s t p')    -- substitute first free variable with s
+         (treeSubstOneSymbol p' v s t)    -- substitute first free variable with s
          (Restate pos_list)]
     t  = treeDeduceREST [(t', col)
                         |
@@ -334,7 +335,7 @@ restate pos_list s p = p <+> pl
     v  = if vs == []
          then ""
          else head vs           -- first free variable in t (or empty string)
-    vs = varsFree t p'          -- list of all free variables in t
+    vs = varsFree p' t          -- list of all free variables in t
 
 synapsis :: Proof -> Proof
 synapsis p = p <+> pl

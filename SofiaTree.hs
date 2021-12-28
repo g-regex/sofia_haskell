@@ -19,7 +19,8 @@ module SofiaTree
      numDepth,
      treeFromLn,
      ruleFromLn,
-     (<+>)) where
+     (<+>),
+     pdo) where
 
 import ListHelpers
 
@@ -117,7 +118,12 @@ instance (Show a, Show b, Show c, Show d) => Show (ProofLineData a b c d) where
 type ProofLine = ProofLineData Int Int SofiaTree DeductionRule
 --type ProofLine = (Int, Int, SofiaTree, DeductionRule)
 
-data PList a = PListItem a (PList a) | PListEnd deriving (Show)
+data PList a = PListItem a (PList a) | PListEnd
+
+instance (Show a) => Show (PList a) where
+    show (PListEnd)      = ""
+    show (PListItem x PListEnd) = show x
+    show (PListItem x y) = (show x) ++ "\n" ++ (show y)
 
 type Proof = PList ProofLine
 
@@ -163,3 +169,6 @@ treeFromLn (Line _ _ c _) = c
 -- NOTE: currently not in use
 ruleFromLn :: ProofLine -> DeductionRule
 ruleFromLn (Line _ _ _ d) = d
+
+pdo :: ([ProofLine] -> a) -> Proof -> a
+pdo func proof = func (toListFromProof proof)
