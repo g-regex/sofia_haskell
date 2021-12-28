@@ -8,7 +8,18 @@ module SofiaTree
      getSubtrees,
      getSymbol,
      toSofiaTree,
-     toType) where
+     toType,
+     Proof,
+     ProofLine,
+     newProof,
+     newLine,
+     toListFromProof,
+     toProofFromList,
+     numLine,
+     numDepth,
+     treeFromLn,
+     ruleFromLn,
+     (<+>)) where
 
 import ListHelpers
 
@@ -96,3 +107,59 @@ instance (Printable a, SType b) => SofiaTreeClass (Tree a b) where
     getSymbol (Node a b cs)    = toString a
     isFormulator (Node a b cs) =
         not (or [toType b == Statement, toType b == Formula, toType b == Atom])
+
+
+data ProofLineData a b c d = Line a b c d
+
+instance (Show a, Show b, Show c, Show d) => Show (ProofLineData a b c d) where
+    show (Line a b c d) = (show c) ++ " /L" ++ (show a) ++ ": " ++ (show d)
+
+type ProofLine = ProofLineData Int Int SofiaTree DeductionRule
+--type ProofLine = (Int, Int, SofiaTree, DeductionRule)
+
+data PList a = PListItem a (PList a) | PListEnd deriving (Show)
+
+type Proof = PList ProofLine
+
+phead :: PList a -> a
+phead (PListItem x y) = x
+
+plast :: PList a -> a
+plast (PListItem x PListEnd) = x
+plast (PListItem x y) = plast y
+
+infixr 5 <+>
+PListItem v w <+> PListEnd = PListItem v w
+PListEnd <+> PListItem x y = PListItem x y
+PListItem v w <+> PListItem x y = PListItem v (w <+> (PListItem x y))
+
+preverse :: PList a -> PList a
+preverse (PListItem x PListEnd) = PListItem x PListEnd
+preverse (PListItem x y) = (preverse y) <+> (PListItem x PListEnd)
+
+toProofFromList :: [a] -> PList a
+toProofFromList [] = PListEnd
+toProofFromList (pl:pls) = PListItem pl (toProofFromList pls)
+
+toListFromProof :: PList a -> [a]
+toListFromProof PListEnd = []
+toListFromProof (PListItem pl pls) = pl : (toListFromProof pls)
+
+newProof :: Proof
+newProof = PListEnd
+
+newLine :: Int -> Int -> SofiaTree -> DeductionRule -> ProofLine
+newLine a b c d = Line a b c d
+
+numLine :: ProofLine -> Int
+numLine (Line a _ _ _) = a
+
+numDepth :: ProofLine -> Int
+numDepth (Line _ b _ _) = b
+
+treeFromLn :: ProofLine -> SofiaTree
+treeFromLn (Line _ _ c _) = c
+
+-- NOTE: currently not in use
+ruleFromLn :: ProofLine -> DeductionRule
+ruleFromLn (Line _ _ _ d) = d

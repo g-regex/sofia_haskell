@@ -16,7 +16,7 @@ The Sofia proof assistant.
 module Sofia (
     -- * Types
     ProofLine,
-    --Proof,
+    Proof,
 
     -- * Naming Convention
     -- $naming
@@ -99,71 +99,6 @@ main = pure ()
 -- element is the line depth, the third is a Sofia expression and the
 -- fourth element is the deduction rule that was used to obtain the Sofia
 -- expression.
-data ProofLineData a b c d = Line a b c d
-
-instance (Show a, Show b, Show c, Show d) => Show (ProofLineData a b c d) where
-    show (Line a b c d) = (show c) ++ " /L" ++ (show a) ++ ": " ++ (show d)
-
-type ProofLine = ProofLineData Int Int SofiaTree DeductionRule
---type ProofLine = (Int, Int, SofiaTree, DeductionRule)
-
-data PList a = PListItem a (PList a) | PListEnd deriving (Show)
-
-type Proof = PList ProofLine
-
-phead :: PList a -> a
-phead (PListItem x y) = x
-
-plast :: PList a -> a
-plast (PListItem x PListEnd) = x
-plast (PListItem x y) = plast y
-
-infixr 5 <+>
-PListItem v w <+> PListEnd = PListItem v w
-PListEnd <+> PListItem x y = PListItem x y
-PListItem v w <+> PListItem x y = PListItem v (w <+> (PListItem x y))
-
-preverse :: PList a -> PList a
-preverse (PListItem x PListEnd) = PListItem x PListEnd
-preverse (PListItem x y) = (preverse y) <+> (PListItem x PListEnd)
-
-toProofFromList :: [a] -> PList a
-toProofFromList [] = PListEnd
-toProofFromList (pl:pls) = PListItem pl (toProofFromList pls)
-
-toListFromProof :: PList a -> [a]
-toListFromProof PListEnd = []
-toListFromProof (PListItem pl pls) = pl : (toListFromProof pls)
-
--- |A Sofia proof is a sequence of `ProofLine`s
---type Proof = [ProofLine]
-
-numLine :: ProofLine -> Int
-numLine (Line a _ _ _) = a
-
-numDepth :: ProofLine -> Int
-numDepth (Line _ b _ _) = b
-
-treeFromLn :: ProofLine -> SofiaTree
-treeFromLn (Line _ _ c _) = c
-
--- NOTE: currently not in use
-ruleFromLn :: ProofLine -> DeductionRule
-ruleFromLn (Line _ _ _ d) = d
-
-{-numLine :: ProofLine -> Int
-numLine (a, _, _, _) = a
-
-numDepth :: ProofLine -> Int
-numDepth (_, b, _, _) = b
-
-treeFromLn :: ProofLine -> SofiaTree
-treeFromLn (_, _, c, _) = c
-
--- NOTE: currently not in use
-ruleFromLn :: ProofLine -> DeductionRule
-ruleFromLn (_, _, _, d) = d
--}
 
 -- NOTE: currently not in use
 numDepthAt :: Int -> [ProofLine] -> Int
@@ -356,43 +291,41 @@ treeDeduceSYN p = treeSTMT (ts ++ [t, treeIMP, t'])
 
 ------------------------- Functions generating Proofs  ------------------------- 
 
-newProof = PListEnd
-
 -- |Takes a @String@ @s@ and a @Proof@ @p@ and appends a new @ProofLine@
 -- @pl@ to @p@ where the assumption depth is increased by one (with respect to
 -- the last @ProofLine@ in @p@) and the @SofiaTree@ in @pl@ is the result
 -- of parsing @s@.
 assume :: String -> Proof -> Proof
-assume s p = p <+> (PListItem pl PListEnd)
+assume s p = p <+> pl
    where
     p' = toListFromProof p
-    pl = Line
+    pl = toProofFromList [newLine
          (1 + numCurLn p')   -- increase line number
          (1 + numCurDepth p') -- increase depth
          t
-         Assumption
+         Assumption]
     t  = treeAutoSubstVars (treeParse s) p' -- substitute reserved variable names
 
 selfequate :: (Int, Int) -> Proof -> Proof
-selfequate (line, col) p = p <+> (PListItem pl PListEnd)
+selfequate (line, col) p = p <+> pl
    where
     p' = toListFromProof p
-    pl = Line
+    pl = toProofFromList [newLine
          (1 + numCurLn p')   -- increase line number
          (numCurDepth p')     -- keep depth the same
          t
-         (Selfequate (line, col))
+         (Selfequate (line, col))]
     t  = treeDeduceSELF (treeFromLn $ getIndex line p') col
 
 restate :: [(Int, Int)] -> String -> Proof -> Proof
-restate pos_list s p = p <+> (PListItem pl PListEnd)
+restate pos_list s p = p <+> pl
    where
     p' = toListFromProof p
-    pl = Line
+    pl = toProofFromList [newLine
          (1 + numCurLn p')       -- increase line number
          (numCurDepth p')         -- keep depth the same
          (treeSubstOneSymbol v s t p')    -- substitute first free variable with s
-         (Restate pos_list)
+         (Restate pos_list)]
     t  = treeDeduceREST [(t', col)
                         |
                         (line, col) <- pos_list,
@@ -404,14 +337,14 @@ restate pos_list s p = p <+> (PListItem pl PListEnd)
     vs = varsFree t p'          -- list of all free variables in t
 
 synapsis :: Proof -> Proof
-synapsis p = p <+> (PListItem pl PListEnd)
+synapsis p = p <+> pl
    where
     p' = toListFromProof p
-    pl = Line
+    pl = toProofFromList [newLine
          (1 + numCurLn p')               -- increase line number
          (numCurDepth p' - 1)             -- decrease assumption depth
          (t)
-         Synapsis
+         Synapsis]
     t  = treeDeduceSYN p'
 
 ----------------------------------- Examples  ---------------------------------- 
