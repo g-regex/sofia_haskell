@@ -16,7 +16,7 @@ The Sofia proof assistant.
 module Sofia (
     -- * Types
     ProofLine,
-    Proof,
+    --Proof,
 
     -- * Naming Convention
     -- $naming
@@ -107,8 +107,36 @@ instance (Show a, Show b, Show c, Show d) => Show (ProofLineData a b c d) where
 type ProofLine = ProofLineData Int Int SofiaTree DeductionRule
 --type ProofLine = (Int, Int, SofiaTree, DeductionRule)
 
+data PList a = PListItem a (PList a) | PListEnd deriving (Show)
+
+type Proof = PList ProofLine
+
+phead :: PList a -> a
+phead (PListItem x y) = x
+
+plast :: PList a -> a
+plast (PListItem x PListEnd) = x
+plast (PListItem x y) = plast y
+
+infixr 5 <+>
+PListItem v w <+> PListEnd = PListItem v w
+PListEnd <+> PListItem x y = PListItem x y
+PListItem v w <+> PListItem x y = PListItem v (w <+> (PListItem x y))
+
+preverse :: PList a -> PList a
+preverse (PListItem x PListEnd) = PListItem x PListEnd
+preverse (PListItem x y) = (preverse y) <+> (PListItem x PListEnd)
+
+toProofFromList :: [a] -> PList a
+toProofFromList [] = PListEnd
+toProofFromList (pl:pls) = PListItem pl (toProofFromList pls)
+
+toListFromProof :: PList a -> [a]
+toListFromProof PListEnd = []
+toListFromProof (PListItem pl pls) = pl : (toListFromProof pls)
+
 -- |A Sofia proof is a sequence of `ProofLine`s
-type Proof = [ProofLine]
+--type Proof = [ProofLine]
 
 numLine :: ProofLine -> Int
 numLine (Line a _ _ _) = a
@@ -138,14 +166,14 @@ ruleFromLn (_, _, _, d) = d
 -}
 
 -- NOTE: currently not in use
-numDepthAt :: Int -> Proof -> Int
+numDepthAt :: Int -> [ProofLine] -> Int
 numDepthAt i p = numDepth $ getIndex i p
 
-numCurLn :: Proof -> Int
+numCurLn :: [ProofLine] -> Int
 numCurLn [] = 0
 numCurLn x = numLine $ last x
 
-numCurDepth :: Proof -> Int
+numCurDepth :: [ProofLine] -> Int
 numCurDepth [] = -1
 numCurDepth x = numDepth $ last x
 
@@ -164,10 +192,10 @@ varsTopLvl tree =
              x4 <- filter (\x -> toType x == Symbol) (getSubtrees x3)
              ]
 
-treesScope :: Proof -> [SofiaTree]
+treesScope :: [ProofLine] -> [SofiaTree]
 treesScope p = map treeFromLn (increasingSublist numDepth p)
 
-varsBound :: Proof -> [[Char]]
+varsBound :: [ProofLine] -> [[Char]]
 varsBound p = [v | vs <- map varsTopLvl (treesScope p), v <- vs]
 
 -- |Returns a list resulting from a preorder traversal of tree t and
@@ -208,7 +236,7 @@ varsDeep t = rmdups [s | s <- preorderFilter getSymbol isVar t True, s /= ""]
 
 -- |A list of free variables in a specific statement with respect to a given
 -- proof.
-varsFree :: SofiaTree -> Proof -> [[Char]]
+varsFree :: SofiaTree -> [ProofLine] -> [[Char]]
 varsFree t p =
     without [v | v <- varsDeep t]
             (varsBound p)
@@ -241,45 +269,45 @@ strRenameVar s ss =
 
 -- |Given a variable x, a pair (x, x') is created, where x' is the next
 -- available alternative name for x.
-rnVar :: String -> Proof -> (String, String)
+rnVar :: String -> [ProofLine] -> (String, String)
 rnVar s p = (s, strRenameVar s (varsBound p))
 
 -- |Given a list of variables x1, x2, ... pairs (x1, x1'), (x2, x2') are
 -- created, where the xi' are the next available alternatives name for the
 -- xi.
-rnVarList :: [String] -> Proof -> [(String, String)]
+rnVarList :: [String] -> [ProofLine] -> [(String, String)]
 rnVarList ss p = [rnVar s p | s <- ss]
 
 -- |Replaces all variable names in a given expression by the next available
 -- alternative name.
-treeAutoSubstVars :: SofiaTree -> Proof -> SofiaTree
+treeAutoSubstVars :: SofiaTree -> [ProofLine] -> SofiaTree
 treeAutoSubstVars t p =
     treeSubstSymbol rs t where
         rs = rnVarList ss p
         ss = varsDeep t
 
 -- |Renames one variable in an expression to a provided new name.
-treeSubstOneSymbol :: String -> String -> SofiaTree -> Proof -> SofiaTree
+treeSubstOneSymbol :: String -> String -> SofiaTree -> [ProofLine] -> SofiaTree
 treeSubstOneSymbol s s' t p =
     treeSubstSymbol ss t where
         ss = [(s, strRenameVar s'  (varsBound p))]
 
 ---------------------------- SYNAPSIS HELPERS ----------------------------------
 
-proofLastBracket :: Proof -> Proof
+proofLastBracket :: [ProofLine] -> [ProofLine]
 proofLastBracket p =
     reverse p'
        where
         p' = takeWhile (\pl -> numDepth pl >= numCurDepth p) (reverse p)
 
-varsLastContext :: Proof -> [[Char]]
+varsLastContext :: [ProofLine] -> [[Char]]
 varsLastContext p =
     without [v | pl <- p', v <- varsDeep (treeFromLn pl)]
             (varsBound p')
        where
         p' = proofLastBracket p
 
-varsContextSpecific :: Proof -> [[Char]]
+varsContextSpecific :: [ProofLine] -> [[Char]]
 varsContextSpecific p =
     rmdups $ intersect [varsDeep t, varsLastContext p]
        where
@@ -310,7 +338,7 @@ treeDeduceREST :: [(SofiaTree, Int)] -> SofiaTree
 treeDeduceREST xs = newSofiaTree [] Statement atoms where
     atoms = [getAtom (snd $ x) (fst $ x) | x <- xs]
 
-treeDeduceSYN :: Proof -> SofiaTree
+treeDeduceSYN :: [ProofLine] -> SofiaTree
 treeDeduceSYN p = treeSTMT (ts ++ [t, treeIMP, t'])
    where
     p'   = proofLastBracket p
@@ -328,61 +356,67 @@ treeDeduceSYN p = treeSTMT (ts ++ [t, treeIMP, t'])
 
 ------------------------- Functions generating Proofs  ------------------------- 
 
+newProof = PListEnd
+
 -- |Takes a @String@ @s@ and a @Proof@ @p@ and appends a new @ProofLine@
 -- @pl@ to @p@ where the assumption depth is increased by one (with respect to
 -- the last @ProofLine@ in @p@) and the @SofiaTree@ in @pl@ is the result
 -- of parsing @s@.
 assume :: String -> Proof -> Proof
-assume s p = p ++ [pl]
+assume s p = p <+> (PListItem pl PListEnd)
    where
+    p' = toListFromProof p
     pl = Line
-         (1 + numCurLn p)   -- increase line number
-         (1 + numCurDepth p) -- increase depth
+         (1 + numCurLn p')   -- increase line number
+         (1 + numCurDepth p') -- increase depth
          t
          Assumption
-    t  = treeAutoSubstVars (treeParse s) p -- substitute reserved variable names
+    t  = treeAutoSubstVars (treeParse s) p' -- substitute reserved variable names
 
 selfequate :: (Int, Int) -> Proof -> Proof
-selfequate (line, col) p = p ++ [pl]
+selfequate (line, col) p = p <+> (PListItem pl PListEnd)
    where
+    p' = toListFromProof p
     pl = Line
-         (1 + numCurLn p)   -- increase line number
-         (numCurDepth p)     -- keep depth the same
+         (1 + numCurLn p')   -- increase line number
+         (numCurDepth p')     -- keep depth the same
          t
          (Selfequate (line, col))
-    t  = treeDeduceSELF (treeFromLn $ getIndex line p) col
+    t  = treeDeduceSELF (treeFromLn $ getIndex line p') col
 
 restate :: [(Int, Int)] -> String -> Proof -> Proof
-restate pos_list s p = p ++ [pl]
+restate pos_list s p = p <+> (PListItem pl PListEnd)
    where
+    p' = toListFromProof p
     pl = Line
-         (1 + numCurLn p)       -- increase line number
-         (numCurDepth p)         -- keep depth the same
-         (treeSubstOneSymbol v s t p)    -- substitute first free variable with s
+         (1 + numCurLn p')       -- increase line number
+         (numCurDepth p')         -- keep depth the same
+         (treeSubstOneSymbol v s t p')    -- substitute first free variable with s
          (Restate pos_list)
     t  = treeDeduceREST [(t', col)
                         |
                         (line, col) <- pos_list,
-                        t' <- [treeFromLn $ getIndex line p]
+                        t' <- [treeFromLn $ getIndex line p']
                         ]
     v  = if vs == []
          then ""
          else head vs           -- first free variable in t (or empty string)
-    vs = varsFree t p           -- list of all free variables in t
+    vs = varsFree t p'          -- list of all free variables in t
 
 synapsis :: Proof -> Proof
-synapsis p = p ++ [pl]
+synapsis p = p <+> (PListItem pl PListEnd)
    where
+    p' = toListFromProof p
     pl = Line
-         (1 + numCurLn p)               -- increase line number
-         (numCurDepth p - 1)             -- decrease assumption depth
+         (1 + numCurLn p')               -- increase line number
+         (numCurDepth p' - 1)             -- decrease assumption depth
          (t)
          Synapsis
-    t  = treeDeduceSYN p
+    t  = treeDeduceSYN p'
 
 ----------------------------------- Examples  ---------------------------------- 
 
-p = assume "[K][[K][b]e[[[c][d]f[a]:[b]]]][r]" []
+p = assume "[K][[K][b]e[[[c][d]f[a]:[b]]]][r]" newProof
 p0 = assume "[[X]=[X]][s]" p
 p1 = selfequate (1,1) p0
 p2 = restate [(1,2)] "y" p1
