@@ -128,80 +128,71 @@ numCurDepth :: Proof -> Int
 numCurDepth [] = -1
 numCurDepth x = numDepth $ last x
 
-treesWithDepthLT :: Int -> Proof -> [SofiaTree]
-treesWithDepthLT i p = [treeFromLn pl | pl <- p, numDepth pl < i]
+---------------------- functions to extract variables --------------------------
 
 varsTopLvl :: SofiaTree -> [[Char]]
 varsTopLvl tree =
-    [getSymbol x4 | x1 <- filter (\x -> toType x == Statement) [tree],
-                    x2 <- filter (\x -> toType x == Atom) (getSubtrees x1),
-                    x3 <- filter (\x -> toType x == Formula) (getSubtrees x2),
-                    length (getSubtrees x3) == 1, -- TODO make more efficient 
-                    x4 <- filter (\x -> toType x == Symbol) (getSubtrees x3)]
+    ts
+       where
+        ts = [getSymbol x4
+             |
+             x1 <- filter (\x -> toType x == Statement) [tree],
+             x2 <- filter (\x -> toType x == Atom) (getSubtrees x1),
+             x3 <- filter (\x -> toType x == Formula) (getSubtrees x2),
+             length (getSubtrees x3) == 1,
+             x4 <- filter (\x -> toType x == Symbol) (getSubtrees x3)
+             ]
 
-varsBound :: Int -> Proof -> [[Char]]
-varsBound i p =
-    [v | t <- ts, v <- varsTopLvl t] where
-        ts           = treesWithDepthLT (numLastDepth + i) p
-        numLastDepth = numDepth $ last p
+treesScope :: Proof -> [SofiaTree]
+treesScope p = map treeFromLn (increasingSublist numDepth p)
 
-treesScope :: Int -> Proof -> [SofiaTree]
-treesScope i p = map treeFromLn p'
-   where
-    p'             = onebranch p''
-    p''            = filter (\pl -> numLine pl <= i) p
-    onebranch [pl] = [pl]
-    onebranch p3   = [pl] ++ onebranch (dropWhile f p3)
-                       where
-                        pl = head p3
-                        f  = (\pl' -> numLine pl' <= numLine pl)
-
----------------------------- RESTATE HELPERS -----------------------------------
+varsBound :: Proof -> [[Char]]
+varsBound p = [v | vs <- map varsTopLvl (treesScope p), v <- vs]
 
 -- |Returns a list resulting from a preorder traversal of tree t and
--- applying s to each subtree; direct children of subtrees are skipped whenever
+-- applying xf to each subtree; direct children of subtrees are skipped whenever
 -- the filter-condition f is not met; this is recursively communicated by
 -- setting b to False
-preorder :: (SofiaTree -> b) ->  (SofiaTree -> Bool) -> SofiaTree -> Bool -> [b]
-preorder s f t b =
+preorderFilter :: (SofiaTree -> b) ->
+                  (SofiaTree -> Bool) ->
+                  SofiaTree ->
+                  Bool ->
+                  [b]
+preorderFilter xf f t b =
     if getSubtrees t == []
     then ts
-    else ts ++ [ x | t' <- (getSubtrees t), x <- preorder' t' ] where
+    else ts ++ [x | t' <- (getSubtrees t), x <- preorder' t'] where
         preorder' t' =
             if f t
-            then preorder s f t' True
-            else preorder s f t' False
+            then preorderFilter xf f t' True
+            else preorderFilter xf f t' False
         ts =
             if b
-            then [s t]
+            then [xf t]
             else []
 
 -- |'True' if an SofiaTree directly corresponds to a variable; 'False'
 -- otherwise.
 isVar :: SofiaTree -> Bool
-isVar = \t -> length (getSubtrees t) == 1
+isVar t = 
+    and cond
+       where
+        ts   = (getSubtrees t)
+        cond = [length ts == 1, toType (head ts) == Symbol, toType t == Formula]
 
 -- |A list of all variables contained in a tree (does a deep search for
 -- variables).
 varsDeep :: SofiaTree -> [[Char]]
-varsDeep t = rmdups [s | s <- preorder getSymbol isVar t True, s /= ""]
-
--- |The minimum depth of the occurrence of a variable in a given proof.
-minVarDepth :: String -> Proof -> Int
-minVarDepth s p =
-    case depths of
-         [] -> -1
-         _  -> minimum depths
-         where
-             depths = [numDepth $ pl | pl <- p,
-                                     elem s (varsTopLvl (treeFromLn pl))]
+varsDeep t = rmdups [s | s <- preorderFilter getSymbol isVar t True, s /= ""]
 
 -- |A list of free variables in a specific statement with respect to a given
 -- proof.
 varsFree :: SofiaTree -> Proof -> [[Char]]
-varsFree t p = [v | v <- varsDeep t,
-                    or [minVarDepth v p == -1, numCurDepth p < minVarDepth v p]]
-                    -- TODO optimise
+varsFree t p =
+    without [v | v <- varsDeep t]
+            (varsBound p)
+
+------------------------ functions for renaming symbols ------------------------
 
 -- |Replaces a string x with another string y, if the list rs contains
 -- a pair (x, y); otherwise x remains unchanged.
@@ -230,7 +221,7 @@ strRenameVar s ss =
 -- |Given a variable x, a pair (x, x') is created, where x' is the next
 -- available alternative name for x.
 rnVar :: String -> Proof -> (String, String)
-rnVar s p = (s, strRenameVar s (varsBound 1 p))
+rnVar s p = (s, strRenameVar s (varsBound p))
 
 -- |Given a list of variables x1, x2, ... pairs (x1, x1'), (x2, x2') are
 -- created, where the xi' are the next available alternatives name for the
@@ -250,27 +241,28 @@ treeAutoSubstVars t p =
 treeSubstOneSymbol :: String -> String -> SofiaTree -> Proof -> SofiaTree
 treeSubstOneSymbol s s' t p =
     treeSubstSymbol ss t where
-        ss = [(s, strRenameVar s'  (varsBound 1 p))]
+        ss = [(s, strRenameVar s'  (varsBound p))]
 
 ---------------------------- SYNAPSIS HELPERS ----------------------------------
 
 proofLastBracket :: Proof -> Proof
-proofLastBracket p = takeWhile (\x -> numDepth x == numCurDepth p) (reverse p)
-
-pairLastBracket :: Proof -> (SofiaTree, SofiaTree)
-pairLastBracket p =
-    (treeFromLn $ last p', treeFromLn $ head p') where p' = proofLastBracket p
+proofLastBracket p =
+    reverse p'
+       where
+        p' = takeWhile (\pl -> numDepth pl >= numCurDepth p) (reverse p)
 
 varsLastContext :: Proof -> [[Char]]
 varsLastContext p =
-    without [v | pl <- proofLastBracket p,
-                  v <- varsDeep (treeFromLn pl)]
-            (varsBound 0 p)
+    without [v | pl <- p', v <- varsDeep (treeFromLn pl)]
+            (varsBound p')
+       where
+        p' = proofLastBracket p
 
 varsContextSpecific :: Proof -> [[Char]]
 varsContextSpecific p =
-    rmdups $intersect [varsDeep lastStmt, varsLastContext p] where
-        lastStmt = treeFromLn $ last p
+    rmdups $ intersect [varsDeep t, varsLastContext p]
+       where
+        t = treeFromLn $ last p
 
 ------------------------- Functions generating SofiaTrees  ------------------------- 
 
@@ -298,21 +290,20 @@ treeDeduceREST xs = newSofiaTree [] Statement atoms where
     atoms = [getAtom (snd $ x) (fst $ x) | x <- xs]
 
 treeDeduceSYN :: Proof -> SofiaTree
-treeDeduceSYN p = treeSTMT (ts ++ [(fst pair), treeIMP, (snd pair)])
+treeDeduceSYN p = treeSTMT (ts ++ [t, treeIMP, t'])
    where
-    pair    = pairLastBracket p -- ordered pair containing the first and the
-                                -- last statement of the last bracket in p
-    ts      = [treeSTMT [newSofiaTree v Symbol []]  -- statements introducing
-                                                    -- context specific
-                                                    -- variables
-              |
-              v <- varsContextSpecific p,
-              not (elem v (varsTopLvl (fst pair)))  -- exclude variables that
-                                                    -- were introduced in
-                                                    -- the first statement
-                                                    -- of the current
-                                                    -- bracket
-              ]
+    p'   = proofLastBracket p
+    t    = treeFromLn $ head p'
+    t'   = treeFromLn $ last p'
+    ts   = [treeSTMT [newSofiaTree v Symbol []]  -- statements introducing
+                                                 -- context specific
+                                                 -- variables
+           |
+           v <- varsContextSpecific p,
+           not (elem v (varsTopLvl t))  -- exclude variables that were
+                                        -- introduced in the first
+                                        -- statement of the current bracket
+           ]
 
 ------------------------- Functions generating Proofs  ------------------------- 
 
