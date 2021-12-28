@@ -128,7 +128,7 @@ varsTopLvl tree =
              ]
 
 treesScope :: [ProofLine] -> [SofiaTree]
-treesScope p = map treeFromLn (increasingSublist numDepth p)
+treesScope p = map treeFromLn (reverse (decreasingSublist numDepth (reverse p)))
 
 varsBound :: [ProofLine] -> [[Char]]
 varsBound p = [v | vs <- map varsTopLvl (treesScope p), v <- vs]
@@ -356,4 +356,18 @@ p1 = selfequate (1,1) p0
 p2 = restate [(1,2)] "y" p1
 p3 = selfequate (2,1) p2
 p4 = restate [(5,1)] "K" p3
+p5 = assume "[K]" p4
+p6 = synapsis p5
+
+px = toListFromProof p6
+
 a = treeParse "[a][r][z][[a]and[b]=[k]]"
+
+{->>>> S.a("[[Mark[]] is human][[X][[X] is human]:[[X] can feel]]")
+>>>> S.a("[Mark[]]")
+>>>> S.d(1,[[2,1]],2)-}
+
+q1 = assume "[[Mark[]] is human][[X][[X] is human]:[[X] can feel]]" newProof
+q2 = assume "[Mark[]]" q1
+
+a2 = treeFromLn (plast q2)

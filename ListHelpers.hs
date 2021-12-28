@@ -15,13 +15,13 @@ getSublistIndex i xs =
        where
         pairs = zip [y | y <- xs] [1..]
 
-increasingSublist :: Ord b => (a -> b) -> [a] -> [a]
-increasingSublist toOrd [] = []
-increasingSublist toOrd [x] = [x]
-increasingSublist toOrd p3  = [pl] ++ increasingSublist toOrd (dropWhile f p3)
-   where
-    pl = head p3
-    f  = (\pl' -> toOrd pl' <= toOrd pl)
+decreasingSublist :: (Ord b, Eq a) => (a -> b) -> [a] -> [a]
+decreasingSublist toOrd [] = []
+decreasingSublist toOrd [x] = [x]
+decreasingSublist toOrd (pl:pls) =
+    [pl] ++ decreasingSublist toOrd (dropWhile f pls)
+       where
+        f  = (\pl' -> toOrd pl' > toOrd pl)
                                                                       
 -- this function is by Graham Hutton
 rmdups :: Eq a => [a ] -> [a ]

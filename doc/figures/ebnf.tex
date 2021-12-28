@@ -22,8 +22,9 @@ $\formula$      & $\coloneqq$ &	$\formulator \bigg[ \statement \Big\{
                 &             &	$\Big| \statement \formulator \Big\{ \statement
                                  \formulator \Big\} \Big[ \statement \Big]$   \\
 $\statement$    & $\coloneqq$ & $\atom \Big\{ \atom \Big\}$                   \\
-$\atom$		    & $\coloneqq$ & $\textrm{`['} \formula \Big| \statement
-                                 \textrm{`]'}$                                \\
+$\atom$		    & $\coloneqq$ & $\textrm{`['} \formula   \textrm{`]'} \Big|
+                                 \textrm{`['} \statement \textrm{`]'} \Big|
+                                 \textrm{`['} \textrm{`]'}$                   \\
 $\formulator$   & $\coloneqq$ & $\textrm{`:'} \Big| \textrm{`='} \Big| \symb$ \\
 $\symb$         & $\coloneqq$ & $\character \Big\{ \character \Big\}$         \\
 $\character$	& $\coloneqq$ & $\textrm{`a'} \Big| \dots \Big| \textrm{`z'}

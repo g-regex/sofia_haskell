@@ -20,7 +20,10 @@ module SofiaTree
      treeFromLn,
      ruleFromLn,
      (<+>),
-     pdo) where
+     pdo,
+     plast,
+     phead,
+     preverse) where
 
 import ListHelpers
 
@@ -66,7 +69,7 @@ instance (Printable a, Show a, SType b, Show b) => Show (Tree a b) where
 
 -- |A (possibly parametrised) deduction rule.
 data DeductionRule = Assumption | Selfequate (Int, Int) | Restate [(Int, Int)]
-                     | Synapsis deriving (Show)
+                     | Synapsis deriving (Show, Eq)
 
 -- |A 'Tree' containing a parsed Sofia string. Each 'Node' of such a 'Tree'
 -- contains a list of 'Char's (only non-empty, if the 'TypeOfNode' is
@@ -110,7 +113,7 @@ instance (Printable a, SType b) => SofiaTreeClass (Tree a b) where
         not (or [toType b == Statement, toType b == Formula, toType b == Atom])
 
 
-data ProofLineData a b c d = Line a b c d
+data ProofLineData a b c d = Line a b c d deriving (Eq)
 
 instance (Show a, Show b, Show c, Show d) => Show (ProofLineData a b c d) where
     show (Line a b c d) = (show c) ++ " /L" ++ (show a) ++ ": " ++ (show d)

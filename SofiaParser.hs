@@ -62,6 +62,9 @@ sAtom =
              x <- sStatement
              specialChar ']'
              return (newSofiaTree "" Atom [x])
+      <|> do specialChar '['
+             specialChar ']'
+             return (newSofiaTree "" Atom [])
 
 sStatement :: Parser SofiaTree
 sStatement = do x <- sAtom
