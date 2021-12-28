@@ -1,6 +1,6 @@
 module SofiaTree
     (SofiaTree,
-     DeductionRule (Assumption, Selfequate, Restate),
+     DeductionRule (Assumption, Selfequate, Restate, Synapsis),
      TypeOfNode (Atom, Statement, Formula, Implication, Equality, Symbol,
                  Error),
      newSofiaTree,
@@ -54,7 +54,7 @@ instance (Printable a, Show a, SType b, Show b) => Show (Tree a b) where
 
 -- |A (possibly parametrised) deduction rule.
 data DeductionRule = Assumption | Selfequate (Int, Int) | Restate [(Int, Int)]
-    deriving (Show)
+                     | Synapsis deriving (Show)
 
 -- |A 'Tree' containing a parsed Sofia string. Each 'Node' of such a 'Tree'
 -- contains a list of 'Char's (only non-empty, if the 'TypeOfNode' is

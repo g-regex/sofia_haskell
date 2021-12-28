@@ -267,19 +267,19 @@ varsContextSpecific p =
 ------------------------- Functions generating SofiaTrees  ------------------------- 
 
 treeEQ :: SofiaTree
-treeEQ = (newSofiaTree[] Equality [])
+treeEQ = (newSofiaTree [] Equality [])
 
 treeIMP :: SofiaTree
-treeIMP = (newSofiaTree[] Implication [])
+treeIMP = (newSofiaTree [] Implication [])
 
 treeTRUTH :: SofiaTree
-treeTRUTH = newSofiaTree[] Statement [newSofiaTree[] Atom []]
+treeTRUTH = newSofiaTree [] Statement [newSofiaTree[] Atom []]
 
 treeSTMT :: [SofiaTree] -> SofiaTree
 treeSTMT ts =
         newSofiaTree []
                      Statement
-                     [newSofiaTree[] Atom [newSofiaTree[] Formula ts]]
+                     [newSofiaTree [] Atom [newSofiaTree[] Formula ts]]
 
 treeDeduceSELF :: SofiaTree -> Int -> SofiaTree
 treeDeduceSELF t i = treeSTMT [statement, treeEQ, statement] where
@@ -345,6 +345,15 @@ restate pos_list s p = p ++ [pl]
          then ""
          else head vs           -- first free variable in t (or empty string)
     vs = varsFree t p           -- list of all free variables in t
+
+synapsis :: Proof -> Proof
+synapsis p = p ++ [pl]
+   where
+    pl = (1 + numCurLn p,               -- increase line number
+         numCurDepth p - 1,             -- decrease assumption depth
+         t,
+         Synapsis)
+    t  = treeDeduceSYN p
 
 ----------------------------------- Examples  ---------------------------------- 
 
