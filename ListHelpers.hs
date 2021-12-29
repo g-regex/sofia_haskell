@@ -1,7 +1,10 @@
 module ListHelpers where
 
 intersect :: (Eq a) => [[a]] -> [a]
-intersect xss = [x | xs <- xss, x <- xs, and $ map (elem x) xss]
+intersect xss = rmdups [x | xs <- xss, x <- xs, and $ map (elem x) xss]
+
+subset :: (Eq a) => [a] -> [a] -> Bool
+subset xs ys = xs == intersect [xs, ys]
 
 without :: (Eq a) => [a] -> [a] -> [a]
 without xs ys = [x | x <- xs, not (elem x ys)]
@@ -24,6 +27,6 @@ decreasingSublist toOrd (pl:pls) =
         f  = (\pl' -> toOrd pl' > toOrd pl)
                                                                       
 -- this function is by Graham Hutton
-rmdups :: Eq a => [a ] -> [a ]
+rmdups :: Eq a => [a] -> [a]
 rmdups [] = []
 rmdups (x:xs) = x:rmdups (filter (/= x) xs)
