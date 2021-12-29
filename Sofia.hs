@@ -186,6 +186,36 @@ treesImplied t =
         ts = getSubtrees t
         t' = head ts
         ts' = getSubtrees t'
+
+treesLHS :: SofiaTree -> SofiaTree
+treesLHS t =
+    if and [toType t == Atom,
+            length ts == 1,
+            toType t' == Formula,
+            length ts' == 3,
+            map toType ts' == [Statement, Equality, Statement]]
+    then
+        getIndex 1 ts'
+    else newSofiaTree "" Error []
+       where
+        ts = getSubtrees t
+        t' = head ts
+        ts' = getSubtrees t'
+
+treesRHS :: SofiaTree -> SofiaTree
+treesRHS t =
+    if and [toType t == Atom,
+            length ts == 1,
+            toType t' == Formula,
+            length ts' == 3,
+            map toType ts' == [Statement, Equality, Statement]]
+    then
+        getIndex 3 ts'
+    else newSofiaTree "" Error []
+       where
+        ts = getSubtrees t
+        t' = head ts
+        ts' = getSubtrees t'
     
 
 -- |Returns a list resulting from a preorder traversal of tree t and
@@ -304,6 +334,28 @@ treeSubstTree rs t =
     else t''
        where t'' = substitute rs t
 
+treeSubstTree' :: [(SofiaTree, SofiaTree)] ->
+                  [SofiaTree] ->
+                  [Int] ->
+                  Int ->
+                  ([SofiaTree], Int)
+treeSubstTree' rs [] is i = ([], i)
+treeSubstTree' rs (t:ts) is i =
+    if or [t == t', not (elem i is)]
+    then ((newSofiaTree (getSymbol t)
+                        (toType t)
+                        (subtree)) : rest_tree, rest_i)
+    else (t' : rest_tree, rest_i)
+       where
+        incr       = if t == t' then 0 else 1
+        t'         = substitute rs t
+        recur      = treeSubstTree' rs (getSubtrees t) is (i + incr)
+        subtree    = fst recur
+        cumulative = snd recur
+        rest       = treeSubstTree' rs ts is cumulative
+        rest_tree  = fst rest
+        rest_i     = snd rest
+
 -- |Replaces a string "x" with "x'", "x''", "x'''", "x1", "x2", ... based on
 -- the availability as indicated by the list of unavailable variables.
 strRenameVar :: String -> [String] -> String
@@ -418,6 +470,9 @@ treeDeduceAPPLY p rs t =
        where
         t' = treeSubstTree rs t
 
+--treeDeduceLS :: SofiaTree -> SofiaTree -> [Int] -> SofiaTree
+--treeDeduceLS subs target indices =
+
 ------------------------- Functions generating Proofs  ------------------------- 
 
 -- |Takes a @String@ @s@ and a @Proof@ @p@ and appends a new @ProofLine@
@@ -514,7 +569,7 @@ q5 = synapsis q4
 
 a2 = treeFromLn (plast q2)
 
-a = treeParse "[a][r][z][[a]and[b]=[k]]"
+a = treeParse "[a][r][z][[a]and[b][r]=[k]][r]"
 b = treeParse "[r]"
 c = treeParse "[[t]he]"
 b1 = getAtom 1 b
