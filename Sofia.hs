@@ -325,7 +325,7 @@ treeSubstSymbol rs t =
                     [treeSubstSymbol rs t' | t' <- getSubtrees t]
 
 -- takes [(atom, atom)] !!
-treeSubstTree :: [(SofiaTree, SofiaTree)] -> SofiaTree -> SofiaTree
+{-treeSubstTree :: [(SofiaTree, SofiaTree)] -> SofiaTree -> SofiaTree
 treeSubstTree rs t =
     if t == t''
     then newSofiaTree    (getSymbol t)
@@ -333,14 +333,25 @@ treeSubstTree rs t =
                          [treeSubstTree rs t' | t' <- getSubtrees t]
     else t''
        where t'' = substitute rs t
+-}
 
-treeSubstTree' :: [(SofiaTree, SofiaTree)] ->
+treeSubstTree :: [(SofiaTree, SofiaTree)] -> SofiaTree -> [Int] -> SofiaTree
+treeSubstTree rs t is = 
+    if t == t'
+    then newSofiaTree (getSymbol t)
+                      (toType t)
+                      (fst (treeSubstTreeHelper rs (getSubtrees t) is 1))
+    else t'
+       where
+        t' = substitute rs t
+
+treeSubstTreeHelper :: [(SofiaTree, SofiaTree)] ->
                   [SofiaTree] ->
                   [Int] ->
                   Int ->
                   ([SofiaTree], Int)
-treeSubstTree' rs [] is i = ([], i)
-treeSubstTree' rs (t:ts) is i =
+treeSubstTreeHelper rs [] is i = ([], i)
+treeSubstTreeHelper rs (t:ts) is i =
     if or [t == t', not (elem i is)]
     then ((newSofiaTree (getSymbol t)
                         (toType t)
@@ -349,10 +360,10 @@ treeSubstTree' rs (t:ts) is i =
        where
         incr       = if t == t' then 0 else 1
         t'         = substitute rs t
-        recur      = treeSubstTree' rs (getSubtrees t) is (i + incr)
+        recur      = treeSubstTreeHelper rs (getSubtrees t) is (i + incr)
         subtree    = fst recur
         cumulative = snd recur
-        rest       = treeSubstTree' rs ts is cumulative
+        rest       = treeSubstTreeHelper rs ts is cumulative
         rest_tree  = fst rest
         rest_i     = snd rest
 
@@ -468,7 +479,7 @@ treeDeduceAPPLY p rs t =
     then treesImplied t'
     else newSofiaTree "" Error []
        where
-        t' = treeSubstTree rs t
+        t' = treeSubstTree rs t [1..]
 
 --treeDeduceLS :: SofiaTree -> SofiaTree -> [Int] -> SofiaTree
 --treeDeduceLS subs target indices =
