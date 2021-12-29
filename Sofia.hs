@@ -109,7 +109,7 @@ numCurLn [] = 0
 numCurLn x = numLine $ last x
 
 numCurDepth :: [ProofLine] -> Int
-numCurDepth [] = -1
+numCurDepth [] = 0
 numCurDepth x = numDepth $ last x
 
 ---------------------- functions to extract variables --------------------------
@@ -508,6 +508,9 @@ px2 = getIndex 3 (getSubtrees px1)
 
 q1 = assume "[[Mark[]] is human][[X][[X] is human]:[[X] can feel]]" newProof
 q2 = assume "[Mark[]]" q1
+q3 = apply 1 [(2,1)] 2 q2
+q4 = synapsis q3
+q5 = synapsis q4
 
 a2 = treeFromLn (plast q2)
 

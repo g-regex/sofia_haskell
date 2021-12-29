@@ -130,8 +130,7 @@ showLine pl b =
        showLine' pl 0 = ""
        showLine' pl 1 = case ruleFromLn pl of
                         Assumption -> if b then "■" else "╔"
-                        Synapsis   -> "╚"
-                        _          -> "║"
+                        _          -> if b then "╚" else "║"
        showLine' pl i = "║" ++ (showLine' pl (i - 1))
 
 instance Show (Proof) where
@@ -139,7 +138,7 @@ instance Show (Proof) where
     show (PListItem x PListEnd) = (showLine x False) ++ (show x)
     show (PListItem x y) = (showLineWrapper x) ++ (show x) ++ "\n" ++ (show y)
        where
-        showLineWrapper x = if numDepth (phead y) == numDepth x
+        showLineWrapper x = if numDepth (phead y) >= numDepth x
                             then showLine x False
                             else showLine x True
 
