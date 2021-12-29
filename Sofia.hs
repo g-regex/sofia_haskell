@@ -481,8 +481,19 @@ treeDeduceAPPLY p rs t =
        where
         t' = treeSubstTree rs t [1..]
 
---treeDeduceLS :: SofiaTree -> SofiaTree -> [Int] -> SofiaTree
---treeDeduceLS subs target indices =
+treeDeduceLS :: SofiaTree -> SofiaTree -> [Int] -> SofiaTree
+treeDeduceLS subst target indices =
+    treeSubstTree [(rhs, lhs)] target indices
+       where
+        lhs = head $ getSubtrees $ treesLHS subst
+        rhs = head $ getSubtrees $ treesRHS subst
+
+treeDeduceRS :: SofiaTree -> SofiaTree -> [Int] -> SofiaTree
+treeDeduceRS subst target indices =
+    treeSubstTree [(lhs, rhs)] target indices
+       where
+        lhs = head $ getSubtrees $ treesLHS subst
+        rhs = head $ getSubtrees $ treesRHS subst
 
 ------------------------- Functions generating Proofs  ------------------------- 
 
@@ -553,6 +564,19 @@ apply line pos_list col p = p <+> pl
     t  = treeDeduceAPPLY p' rs t'
     rs = zip (treesAtomsFree p' t') (treesAtomsFromCoords p' pos_list)
 
+rightsub :: Int -> Int -> [Int] -> Int -> Int -> Proof -> Proof
+rightsub sub_line tgt_line is sub_col tgt_col p = p <+> pl
+   where
+    p' = toListFromProof p
+    pl = toProofFromList [newLine
+         (1 + numCurLn p')               -- increase line number
+         (numCurDepth p')
+         (t)
+         RightSub]
+    t  = treeDeduceRS subst target is
+    subst = head (treesAtomsFromCoords p' [(sub_line, sub_col)])
+    target = head (treesAtomsFromCoords p' [(tgt_line, tgt_col)])
+
 ----------------------------------- Examples  ---------------------------------- 
 
 p = assume "[K][b][[K][b]:[[[c][d]f[a]:[b]]]][r]" newProof
@@ -578,6 +602,11 @@ q3 = apply 1 [(2,1)] 2 q2
 q4 = synapsis q3
 q5 = synapsis q4
 
+m1 = assume "[X][Y][[X]=[Y]]" newProof
+m2 = selfequate (1,1) m1
+m3 = rightsub 1 2 [1] 3 1 m2
+m4 = synapsis m3
+
 a2 = treeFromLn (plast q2)
 
 a = treeParse "[a][r][z][[a]and[b][r]=[k]][r]"
@@ -585,3 +614,7 @@ b = treeParse "[r]"
 c = treeParse "[[t]he]"
 b1 = getAtom 1 b
 c1 = getAtom 1 c
+
+-- QUESTIONS:
+-- How are statements that comprise several atoms are to be replaced? / Is
+-- the form of an equality always [..]=[..]?
