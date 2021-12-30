@@ -1,3 +1,5 @@
+{-# OPTIONS_HADDOCK prune #-}
+
 module SofiaTree
     (SofiaTree,
      DeductionRule (Assumption, Selfequate, Restate, Synapsis, Apply, RightSub,

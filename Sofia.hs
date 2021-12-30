@@ -1,6 +1,5 @@
 --{-# LANGUAGE FlexibleInstances #-}
 --{-# LANGUAGE UndecidableInstances #-}
--- {-# OPTIONS_HADDOCK prune #-}
 
 {-|
 Module      : Sofia
@@ -14,17 +13,17 @@ Portability : POSIX
 The Sofia proof assistant.
 -}
 module Sofia (
-    -- * Types
-    ProofLine,
-    Proof,
-
-    -- * Naming Convention
-    -- $naming
-
     -- * Deductions
     assume,
     restate,
-    selfequate
+    selfequate,
+    synapsis,
+    apply,
+    rightsub,
+    leftsub
+
+    -- * Naming Convention
+    -- $naming
 ) where
 
 --------------------------- Using Graham Hutton's code -------------------------
@@ -466,66 +465,100 @@ treeDeduceRS subst target indices =
 -- @pl@ to @p@ where the assumption depth is increased by one (with respect to
 -- the last @ProofLine@ in @p@) and the @SofiaTree@ in @pl@ is the result
 -- of parsing @s@.
-assume ::    String -- ^The `String` representation of the Sofia statement to
-                    --  be assumed.
-          -> Proof
-          -> Proof
+assume ::        String       -- ^The `String` representation of the Sofia
+                              --  statement to be assumed.
+              -> Proof        -- ^The `Proof` to which the generated `ProofLine`
+                              --  should be appended to.
+              -> Proof        -- ^The resulting `Proof`.
 assume s p = p <+> pl
    where
     p' = toListFromProof p
     pl = toProofFromList [newLine
-         (1 + numCurLn p')   -- increase line number
-         (1 + numCurDepth p') -- increase depth
+         (1 + numCurLn p')          -- increase line number
+         (1 + numCurDepth p')       -- increase depth
          t
          Assumption]
     t  = treeAutoSubstSymbols p' (treeParse s) -- substitute reserved variable
                                             -- names
 
-selfequate :: (Int, Int) -> Proof -> Proof
+-- |Equates a statement at a given position to itself.
+selfequate ::    (Int, Int) -- ^Position of the form /(line, column)/ of the
+                            --  statement that should be equated to itself.
+              -> Proof        -- ^The `Proof` to which the generated `ProofLine`
+                              --  should be appended to.
+              -> Proof        -- ^The resulting `Proof`.
 selfequate (line, col) p = p <+> pl
    where
     p' = toListFromProof p
     pl = toProofFromList [newLine
-         (1 + numCurLn p')   -- increase line number
-         (numCurDepth p')     -- keep depth the same
+         (1 + numCurLn p')          -- increase line number
+         (numCurDepth p')           -- keep depth the same
          t
          (Selfequate (line, col))]
     t  = treeDeduceSELF (treeFromLn $ getIndex line p') col
 
--- possible improvement: substitute more than one free variable
-restate :: [(Int, Int)] -> String -> Proof -> Proof
+-- TODO: possible improvement: substitute more than one free variable
+-- |Restates given statements and renames the first free variable with
+-- a provided name.
+restate ::       [(Int, Int)] -- ^List of positions of the form /(line, column)/
+                              --  of the atoms from which the new statement
+                              --  should be built.
+              -> String       -- ^The new name of variable to be renamed; empty
+                              --  `String` if no renaming is desired.
+              -> Proof        -- ^The `Proof` to which the generated `ProofLine`
+                              --  should be appended to.
+              -> Proof        -- ^The resulting `Proof`.
 restate pos_list s p = p <+> pl
    where
     p' = toListFromProof p
     pl = toProofFromList [newLine
-         (1 + numCurLn p')       -- increase line number
-         (numCurDepth p')         -- keep depth the same
-         (treeSubstOneSymbol p' v s t)    -- substitute first free variable with s
+         (1 + numCurLn p')              -- increase line number
+         (numCurDepth p')               -- keep depth the same
+         (treeSubstOneSymbol p' v s t)  -- substitute first free variable with s
          (Restate pos_list)]
     t  = treeDeduceREST p' pos_list
     v  = if vs == []
          then ""
-         else head vs           -- first free variable in t (or empty string)
+         else head vs                     -- first free variable in t
+                                          -- (or empty string)
     vs = map strFromVar (varsFree p' t)   -- list of all free variables in t
 
-synapsis :: Proof -> Proof
+
+-- |Steps out of the current `mini-proof', which is summarised by
+-- a statement, stating that the first line of the `mini-proof' implies its
+-- last line. Newly introduced variables are included in the beginning of
+-- this statement.
+synapsis ::      Proof        -- ^The `Proof` to which the generated `ProofLine`
+                              --  should be appended to.
+              -> Proof        -- ^The resulting `Proof`.
 synapsis p = p <+> pl
    where
     p' = toListFromProof p
     pl = toProofFromList [newLine
-         (1 + numCurLn p')               -- increase line number
+         (1 + numCurLn p')                -- increase line number
          (numCurDepth p' - 1)             -- decrease assumption depth
          (t)
          Synapsis]
     t  = treeDeduceSYN p'
 
-apply :: Int -> [(Int, Int)] -> Int -> Proof -> Proof
+-- |Applies an implication. Given a list of statements (their positions),
+-- free variables in the implication are replaced by the statements. Then
+-- the conditions of the implication are checked and if they match
+-- statements (atoms) within the scope of the current line of the proof,
+-- the implied statement forms the new `ProofLine`.
+apply ::         Int          -- ^The line of the implication to be applied.
+              -> [(Int, Int)] -- ^List of positions of the form /(line, column)/
+                              --  of the atoms used for the replacements.
+              -> Int          -- ^The column of the implication to be applied.
+              -> Proof        -- ^The `Proof` to which the generated `ProofLine`
+                              --  should be appended to.
+              -> Proof        -- ^The resulting `Proof`.
 apply line pos_list col p = p <+> pl
    where
     p' = toListFromProof p
     pl = toProofFromList [newLine
-         (1 + numCurLn p')       -- increase line number
-         (numCurDepth p')         -- keep depth the same
+         (1 + numCurLn p')          -- increase line number
+         (numCurDepth p')           -- keep depth the same
          (t)
          (Apply pos_list)]
     t' = getAtom col $ treeFromLn $ getIndex line p'
@@ -542,6 +575,19 @@ rightsub sub_line tgt_line is sub_col tgt_col p = p <+> pl
          (t)
          RightSub]
     t  = treeDeduceRS subst target is
+    subst = head (atomsFromCoords p' [(sub_line, sub_col)])
+    target = head (atomsFromCoords p' [(tgt_line, tgt_col)])
+
+leftsub :: Int -> Int -> [Int] -> Int -> Int -> Proof -> Proof
+leftsub sub_line tgt_line is sub_col tgt_col p = p <+> pl
+   where
+    p' = toListFromProof p
+    pl = toProofFromList [newLine
+         (1 + numCurLn p')               -- increase line number
+         (numCurDepth p')
+         (t)
+         LeftSub]
+    t  = treeDeduceLS subst target is
     subst = head (atomsFromCoords p' [(sub_line, sub_col)])
     target = head (atomsFromCoords p' [(tgt_line, tgt_col)])
 
@@ -586,3 +632,5 @@ c1 = getAtom 1 c
 -- QUESTIONS:
 -- How are statements that comprise several atoms are to be replaced? / Is
 -- the form of an equality always [..]=[..]?
+--
+-- Can variables be replaced by statements?
