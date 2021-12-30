@@ -53,23 +53,27 @@ main = pure ()
 --
 --      * @t@ (arbitrary @SofiaTree@)
 --
---      * @v@ (@SofiaTree@ of type @Symbol@ which contains a variable)
+--      * @v@ (@SofiaTree@ of type @Atom@ which contains a variable)
 --
---      * @p@ (@Proof@)
---
---      * @pl@ (@ProofLine@)
+--      * @l@ (@ProofLine@)
 --
 --      * @f@ (filter function)
 --
 --      * @b@ (constant @Bool@ function)
 --
---      * @s@ (@String@)
---
 --      * @c@ (@Char@)
+--
+--      * @cs@ (@String@)
+--
+--      * @cscs@ (@(String, String)@)
+--
+--      * @cscss@ (@[(String, String)]@)
 --
 --      * @i@ (@Int@)
 --
---      * @r@ (@(String, String)@, @r@ stands for /rename/)
+--      * @ii@ (@(Int, Int)@)
+--
+--      * @iis@ (@[(Int, Int)]@)
 --
 --      * @y@ (@TypeOfNode@)
 --
@@ -78,9 +82,7 @@ main = pure ()
 -- purpose of the function and /prefix/ describes the return-type of the
 -- function, when all arguments are provided. Options for /prefix/ are:
 --
---      * @is@ (@Bool@)
---
---      * @vars@ (@String@ containing a variable name)
+--      * @is@ \/ @has@ \/ @matches@ (@Bool@)
 --
 --      * @num@ \/ @max@ \/ @min@ (@Int@)
 --
@@ -88,7 +90,9 @@ main = pure ()
 --
 --      * @tree@ (@SofiaTree@)
 --
---      * @rn@ (@(String, String)@, @rn@ stands for /rename/)
+--      * @vars@ (@SofiaTree@ of type @Atom@ which contains a variable)
+--
+--      * @strstr@ (@(String, String)@)
 --
 -- Functions not matching any of these return types (maybe because the
 -- return type is more general) are not prefixed by the above rule. That is
@@ -112,64 +116,67 @@ numCurDepth :: [ProofLine] -> Int
 numCurDepth [] = 0
 numCurDepth x = numDepth $ last x
 
+----------------------------------- patterns -----------------------------------
+
+type Pattern = (Int, [(TypeOfNode, Int)])
+
+patternFromTree :: SofiaTree -> Int -> Pattern
+patternFromTree t depth =
+    (depth, preorderFilterDepth (\x -> (toType x, length $ getSubtrees x))
+                        (\x -> True) depth t)
+
+patternAtomParse :: String -> Int -> Pattern
+patternAtomParse cs depth =
+    patternFromTree (head $ getSubtrees $ treeParse cs) depth
+
+patternVar :: Pattern
+patternVar = patternAtomParse "[x]" (-1)
+
+patternEq :: Pattern
+patternEq = patternAtomParse "[[x]=[y]]" (2)
+
+patternImp :: Pattern
+patternImp = patternAtomParse "[[x]:[y]]" (2)
+
+matchesPattern :: Pattern -> SofiaTree -> Bool
+matchesPattern (i, yis) t = patternFromTree t i == (i, yis)
+
+-- |'True' if an SofiaTree directly corresponds to a variable; 'False'
+-- otherwise.
+
+isVar :: SofiaTree -> Bool
+isVar t =  matchesPattern patternVar t
+
 ---------------------- functions to extract variables --------------------------
 
 atomsFromStmts :: [SofiaTree] -> [SofiaTree]
 atomsFromStmts ts = 
-    [x2
-    |
-    x1 <- filter (\x -> toType x == Statement) ts,
-    x2 <- filter (\x -> toType x == Atom) (getSubtrees x1)
-    ]
-
-strFromAtom :: SofiaTree -> [Char] -- TODO: write a more general function
-strFromAtom t =
-    if and [toType t == Atom,
-            length lvl1 == 1,
-            map toType lvl1 == [Formula],
-            length lvl2 == 1,
-            map toType lvl2 == [Symbol]
-           ]
-    then
-        head $ map getSymbol lvl2
-    else []
-       where
-        lvl1 = getSubtrees t
-        lvl2 = [t' | ts <- map getSubtrees (take 1 lvl1), t' <- ts]
-        lvl3 = [t' | ts <- map getSubtrees (take 1 lvl2), t' <- ts]
-
-{-varsTopLvl :: SofiaTree -> [[Char]]
-varsTopLvl t =
-    [getSymbol x4
-    |
-    x2 <- ts,
-    x3 <- filter (\x -> toType x == Formula) (getSubtrees x2),
-    length (getSubtrees x3) == 1,
-    x4 <- filter (\x -> toType x == Symbol) (getSubtrees x3)
-    ] where ts = atomsFromStmts [t]
-    -}
-
-atomsTopLvlVar :: SofiaTree -> [SofiaTree]
-atomsTopLvlVar t =
     [t'
     |
-    t' <- ts,
-    isAtomVar t'
-    ] where ts = atomsFromStmts [t]
+    t <- filter (\x -> toType x == Statement) ts,
+    t' <- filter (\x -> toType x == Atom) (getSubtrees t)
+    ]
+
+strFromVar :: SofiaTree -> [Char] -- TODO: write a more general function
+strFromVar t =
+    if matchesPattern patternVar t
+    then last $ preorderFilter getSymbol (\x -> True) t
+    else ""
+
+varsTopLvl :: SofiaTree -> [SofiaTree]
+varsTopLvl t = [t' | t' <- ts, isVar t'] where ts = atomsFromStmts [t]
 
 treesScope :: [ProofLine] -> [SofiaTree]
-treesScope p = map treeFromLn (reverse (decreasingSublist numDepth (reverse p)))
+treesScope ls =
+    map treeFromLn (reverse (decreasingSublist numDepth (reverse ls)))
 
 atomsScope :: [ProofLine] -> [SofiaTree]
-atomsScope p = atomsFromStmts (treesScope p)
+atomsScope ls = atomsFromStmts (treesScope ls)
 
-{-varsBound :: [ProofLine] -> [[Char]]
-varsBound p = [v | vs <- map varsTopLvl (treesScope p), v <- vs]-}
+varsBound :: [ProofLine] -> [SofiaTree]
+varsBound ls = [v | vs <- map varsTopLvl (treesScope ls), v <- vs]
 
-atomsBound :: [ProofLine] -> [SofiaTree]
-atomsBound p = [v | vs <- map atomsTopLvlVar (treesScope p), v <- vs]
-
-atomsConditions :: SofiaTree -> [SofiaTree]
+atomsConditions :: SofiaTree -> [SofiaTree] -- TODO
 atomsConditions t =
     if and [toType t == Atom,
             length ts == 1,
@@ -189,7 +196,7 @@ atomsConditions t =
         t' = head ts
         ts' = getSubtrees t'
 
-treesImplied :: SofiaTree -> SofiaTree
+treesImplied :: SofiaTree -> SofiaTree -- TODO
 treesImplied t =
     if and [toType t == Atom,
             length ts == 1,
@@ -204,122 +211,87 @@ treesImplied t =
         t' = head ts
         ts' = getSubtrees t'
 
-stmtLHS :: SofiaTree -> SofiaTree
-stmtLHS t =
-    if and [toType t == Atom,
-            length ts == 1,
-            toType t' == Formula,
-            length ts' == 3,
-            map toType ts' == [Statement, Equality, Statement]]
-    then
-        getIndex 1 ts'
-    else newSofiaTree "" Error []
-       where
-        ts = getSubtrees t
-        t' = head ts
-        ts' = getSubtrees t'
+leftHS :: Int
+leftHS = 1
 
-stmtRHS :: SofiaTree -> SofiaTree
-stmtRHS t =
+rightHS :: Int
+rightHS = 3
+
+stmtFromEQ :: Int -> SofiaTree -> SofiaTree -- TODO
+stmtFromEQ side t =
     if and [toType t == Atom,
             length ts == 1,
             toType t' == Formula,
             length ts' == 3,
             map toType ts' == [Statement, Equality, Statement]]
     then
-        getIndex 3 ts'
+        getIndex side ts'
     else newSofiaTree "" Error []
        where
         ts = getSubtrees t
         t' = head ts
-        ts' = getSubtrees t'
-    
+        ts' = getSubtrees t' 
 
 -- |Returns a list resulting from a preorder traversal of tree t and
 -- applying xf to each subtree; direct children of subtrees are skipped whenever
 -- the filter-condition f is not met; this is recursively communicated by
 -- setting b to False
-{-preorderFilter :: (SofiaTree -> b) ->
-                  (SofiaTree -> Bool) ->
-                  SofiaTree ->
-                  Bool ->
-                  [b]
-preorderFilter xf f t b =
-    if getSubtrees t == []
-    then ts
-    else ts ++ [x | t' <- (getSubtrees t), x <- preorder' t'] where
-        preorder' t' =
-            if f t
-            then preorderFilter xf f t' True
-            else preorderFilter xf f t' False
-        ts =
-            if b
-            then [xf t]
-            else []-}
 
-preorderFilter' :: (SofiaTree -> b) ->
+preorderFilter :: (SofiaTree -> b) ->
                   (SofiaTree -> Bool) ->
                   SofiaTree ->
                   [b]
-preorderFilter' xf f t =
+preorderFilter xf f t =
     if getSubtrees t == []
-    then []
-    else ftrd ++ [x | t' <- (getSubtrees t), x <- preorderFilter' xf f t']
+    then filtered
+    else filtered ++ [x | t' <- (getSubtrees t), x <- preorderFilter xf f t']
        where
-        ftrd = if f t
+        filtered = if f t
                then [xf t]
                else []
 
--- |'True' if an SofiaTree directly corresponds to a variable; 'False'
--- otherwise.
-{-isVar :: SofiaTree -> Bool
-isVar t = 
-    and cond
-       where
-        ts   = (getSubtrees t)
-        cond = [length ts == 1, toType (head ts) == Symbol, toType t == Formula]
-        -}
+preorderFilterDepth :: (SofiaTree -> b) ->
+                  (SofiaTree -> Bool) ->
+                  Int ->
+                  SofiaTree ->
+                  [b]
+preorderFilterDepth xf f i t = preorderFDHelper xf f i t 0
 
-isAtomVar :: SofiaTree -> Bool
-isAtomVar t = 
-    and cond
+preorderFDHelper :: (SofiaTree -> b) ->
+                  (SofiaTree -> Bool) ->
+                  Int ->
+                  SofiaTree ->
+                  Int ->
+                  [b]
+preorderFDHelper xf f max_depth t cur_depth =
+    if or [getSubtrees t == [], max_depth == cur_depth]
+    then filtered
+    else filtered ++ [x
+                     |
+                     t' <- (getSubtrees t),
+                     x <- preorderFDHelper xf f max_depth t' (cur_depth + 1)
+                     ]
        where
-        ts   = getSubtrees t
-        t'   = head ts
-        ts'  = getSubtrees t'
-        t''  = head ts'
-        cond = [length ts' == 1,
-                toType t'' == Symbol,
-                toType t' == Formula,
-                toType t == Atom]
+        filtered = if f t
+               then [xf t]
+               else []
 
 -- |A list of all variables contained in a tree (does a deep search for
 -- variables).
-{-varsDeep :: SofiaTree -> [[Char]]
-varsDeep t = rmdups [s | s <- preorderFilter getSymbol isVar t True, s /= ""]-}
 
-atomsDeep :: SofiaTree -> [SofiaTree]
-atomsDeep t = rmdups [t' | t' <- preorderFilter' id isAtomVar t]
+varsDeep :: SofiaTree -> [SofiaTree]
+varsDeep t = rmdups [t' | t' <- preorderFilter id isVar t]
 
 -- |A list of free variables in a specific statement with respect to a given
 -- proof.
-{-varsFree :: [ProofLine] -> SofiaTree -> [[Char]]
-varsFree p t =
-    without [v | v <- varsDeep t]
-            (map varFromAtom (atomsBound p))-}
 
-atomsFree :: [ProofLine] -> SofiaTree -> [SofiaTree]
-atomsFree p t = without [t' | t' <- atomsDeep t] (atomsBound p)
+varsFree :: [ProofLine] -> SofiaTree -> [SofiaTree]
+varsFree p t = without [t' | t' <- varsDeep t] (varsBound p)
 
 ------------------------ functions for renaming symbols ------------------------
 
 -- |Replaces a string x with another string y, if the list rs contains
 -- a pair (x, y); otherwise x remains unchanged.
-{-strSub :: [(String, String)] -> String -> String
-strSub rs s =
-    if elem s $ map fst rs
-    then head [snd r | r <- rs, fst r == s]
-    else s-}
 
 substitute :: (Eq a) => [(a, a)] -> a -> a
 substitute rs s =
@@ -337,15 +309,6 @@ treeSubstSymbol rs t =
                     [treeSubstSymbol rs t' | t' <- getSubtrees t]
 
 -- takes [(atom, atom)] !!
-{-treeSubstTree :: [(SofiaTree, SofiaTree)] -> SofiaTree -> SofiaTree
-treeSubstTree rs t =
-    if t == t''
-    then newSofiaTree    (getSymbol t)
-                         (toType t)
-                         [treeSubstTree rs t' | t' <- getSubtrees t]
-    else t''
-       where t'' = substitute rs t
--}
 
 treeSubstTree :: [(SofiaTree, SofiaTree)] -> SofiaTree -> [Int] -> SofiaTree
 treeSubstTree rs t is = 
@@ -388,47 +351,47 @@ strRenameStr s ss =
 
 -- |Given a variable x, a pair (x, x') is created, where x' is the next
 -- available alternative name for x.
-rnStr :: [ProofLine] -> String -> (String, String)
-rnStr p s = (s, strRenameStr s (map strFromAtom (atomsBound p)))
+strstrRename :: [ProofLine] -> String -> (String, String)
+strstrRename p s = (s, strRenameStr s (map strFromVar (varsBound p)))
 
 -- |Given a list of variables x1, x2, ... pairs (x1, x1'), (x2, x2') are
 -- created, where the xi' are the next available alternatives name for the
 -- xi.
-rnStrList :: [ProofLine] -> [String] -> [(String, String)]
-rnStrList p ss = [rnStr p s | s <- ss]
+strstrsRename :: [ProofLine] -> [String] -> [(String, String)]
+strstrsRename p ss = [strstrRename p s | s <- ss]
 
 -- |Replaces all variable names in a given expression by the next available
 -- alternative name.
 treeAutoSubstSymbols :: [ProofLine] -> SofiaTree -> SofiaTree
 treeAutoSubstSymbols p t =
     treeSubstSymbol rs t where
-        rs = rnStrList p ss
-        ss = map strFromAtom (atomsDeep t)
+        rs = strstrsRename p ss
+        ss = map strFromVar (varsDeep t)
 
 -- |Renames one variable in an expression to a provided new name.
 treeSubstOneSymbol :: [ProofLine] -> String -> String -> SofiaTree -> SofiaTree
 treeSubstOneSymbol p s s' t =
     treeSubstSymbol ss t where
-        ss = [(s, strRenameStr s' (map strFromAtom (atomsBound p)))]
+        ss = [(s, strRenameStr s' (map strFromVar (varsBound p)))]
 
 ---------------------------- SYNAPSIS HELPERS ----------------------------------
 
-proofLastBracket :: [ProofLine] -> [ProofLine]
-proofLastBracket p =
+linesLastBracket :: [ProofLine] -> [ProofLine]
+linesLastBracket p =
     reverse p'
        where
         p' = takeWhile (\pl -> numDepth pl >= numCurDepth p) (reverse p)
 
 strsLastContext :: [ProofLine] -> [[Char]]
 strsLastContext p =
-    without [v | pl <- p', v <- map strFromAtom (atomsDeep (treeFromLn pl))]
-            (map strFromAtom (atomsBound p'))
+    without [v | pl <- p', v <- map strFromVar (varsDeep (treeFromLn pl))]
+            (map strFromVar (varsBound p'))
        where
-        p' = proofLastBracket p
+        p' = linesLastBracket p
 
 strsContextSpecific :: [ProofLine] -> [[Char]]
 strsContextSpecific p =
-    rmdups $ intersect [map strFromAtom (atomsDeep t), strsLastContext p]
+    rmdups $ intersect [map strFromVar (varsDeep t), strsLastContext p]
        where
         t = treeFromLn $ last p
 
@@ -469,7 +432,7 @@ treeDeduceREST p xs = newSofiaTree [] Statement (atomsFromCoords p xs)
 treeDeduceSYN :: [ProofLine] -> SofiaTree
 treeDeduceSYN p = treeSTMT (ts ++ [t, treeIMP, t'])
    where
-    p'   = proofLastBracket p
+    p'   = linesLastBracket p
     t    = treeFromLn $ head p'
     t'   = treeFromLn $ last p'
     ts   = [treeSTMT [newSofiaTree v Symbol []]  -- statements introducing
@@ -477,7 +440,7 @@ treeDeduceSYN p = treeSTMT (ts ++ [t, treeIMP, t'])
                                                  -- variables
            |
            v <- strsContextSpecific p,
-           not (elem v (map strFromAtom (atomsTopLvlVar t)))
+           not (elem v (map strFromVar (varsTopLvl t)))
                                         -- exclude variables that were
                                         -- introduced in the first
                                         -- statement of the current bracket
@@ -498,15 +461,15 @@ treeDeduceLS :: SofiaTree -> SofiaTree -> [Int] -> SofiaTree
 treeDeduceLS subst target indices =
     treeSubstTree [(rhs, lhs)] target indices
        where
-        lhs = head $ getSubtrees $ stmtLHS subst
-        rhs = head $ getSubtrees $ stmtRHS subst
+        lhs = head $ getSubtrees $ stmtFromEQ leftHS subst
+        rhs = head $ getSubtrees $ stmtFromEQ rightHS subst
 
 treeDeduceRS :: SofiaTree -> SofiaTree -> [Int] -> SofiaTree
 treeDeduceRS subst target indices =
     treeSubstTree [(lhs, rhs)] target indices
        where
-        lhs = head $ getSubtrees $ stmtLHS subst
-        rhs = head $ getSubtrees $ stmtRHS subst
+        lhs = head $ getSubtrees $ stmtFromEQ leftHS subst
+        rhs = head $ getSubtrees $ stmtFromEQ rightHS subst
 
 ------------------------- Functions generating Proofs  ------------------------- 
 
@@ -551,7 +514,7 @@ restate pos_list s p = p <+> pl
     v  = if vs == []
          then ""
          else head vs           -- first free variable in t (or empty string)
-    vs = map strFromAtom (atomsFree p' t)   -- list of all free variables in t
+    vs = map strFromVar (varsFree p' t)   -- list of all free variables in t
 
 synapsis :: Proof -> Proof
 synapsis p = p <+> pl
@@ -575,7 +538,7 @@ apply line pos_list col p = p <+> pl
          (Apply pos_list)]
     t' = getAtom col $ treeFromLn $ getIndex line p'
     t  = treeDeduceAPPLY p' rs t'
-    rs = zip (atomsFree p' t') (atomsFromCoords p' pos_list)
+    rs = zip (varsFree p' t') (atomsFromCoords p' pos_list)
 
 rightsub :: Int -> Int -> [Int] -> Int -> Int -> Proof -> Proof
 rightsub sub_line tgt_line is sub_col tgt_col p = p <+> pl
@@ -622,7 +585,7 @@ m4 = synapsis m3
 
 a2 = treeFromLn (plast q2)
 
-a = treeParse "[a][r][z][[a]and[b][r]=[k]][r]"
+a = treeParse "[[a]=[b]]"
 b = treeParse "[r]"
 c = treeParse "[[t]he]"
 b1 = getAtom 1 b
