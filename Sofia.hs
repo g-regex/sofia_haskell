@@ -123,6 +123,7 @@ type Pattern = (Int, [(TypeOfNode, Int)])
 patternFromTree :: SofiaTree -> Int -> Pattern
 patternFromTree t depth =
     (depth, preorderFilterDepth (\x -> (toType x, length $ getSubtrees x))
+                        (\x -> (toType x, 0))
                         (\x -> True) depth t)
 
 patternAtomParse :: String -> Int -> Pattern
@@ -141,9 +142,7 @@ patternImp = patternAtomParse "[[x]:[y]]" (2)
 matchesPattern :: Pattern -> SofiaTree -> Bool
 matchesPattern (i, yis) t = patternFromTree t i == (i, yis)
 
--- |'True' if an SofiaTree directly corresponds to a variable; 'False'
--- otherwise.
-
+-- |'True' if a SofiaTree is an Atom containing a variable
 isVar :: SofiaTree -> Bool
 isVar t =  matchesPattern patternVar t
 
@@ -178,38 +177,23 @@ varsBound ls = [v | vs <- map varsTopLvl (treesScope ls), v <- vs]
 
 atomsConditions :: SofiaTree -> [SofiaTree] -- TODO
 atomsConditions t =
-    if and [toType t == Atom,
-            length ts == 1,
-            toType t' == Formula,
-            length ts' == 3,
-            map toType ts' == [Statement, Implication, Statement]]
+    if matchesPattern patternImp t
     then
-        [t3
+        [t''
         |
-        t'' <- takeWhile (\x -> toType x == Statement) ts',
-        t3 <- takeWhile (\x -> toType x == Atom) (getSubtrees t''),
-        toType t3 == Atom
+        t' <- takeWhile (\x -> toType x == Statement) ts,
+        t'' <- takeWhile (\x -> toType x == Atom) (getSubtrees t')
         ]
     else []
        where
-        ts = getSubtrees t
-        t' = head ts
-        ts' = getSubtrees t'
+        ts = getSubtrees $ head $ getSubtrees t
 
 treesImplied :: SofiaTree -> SofiaTree -- TODO
 treesImplied t =
-    if and [toType t == Atom,
-            length ts == 1,
-            toType t' == Formula,
-            length ts' == 3,
-            map toType ts' == [Statement, Implication, Statement]]
+    if matchesPattern patternImp t
     then
-        getIndex 3 ts'
+        getIndex 3 $ getSubtrees $ head $ getSubtrees t
     else newSofiaTree "" Error []
-       where
-        ts = getSubtrees t
-        t' = head ts
-        ts' = getSubtrees t'
 
 leftHS :: Int
 leftHS = 1
@@ -219,24 +203,13 @@ rightHS = 3
 
 stmtFromEQ :: Int -> SofiaTree -> SofiaTree -- TODO
 stmtFromEQ side t =
-    if and [toType t == Atom,
-            length ts == 1,
-            toType t' == Formula,
-            length ts' == 3,
-            map toType ts' == [Statement, Equality, Statement]]
+    if matchesPattern patternEq t
     then
-        getIndex side ts'
+        getIndex side $ getSubtrees $ head $ getSubtrees t
     else newSofiaTree "" Error []
-       where
-        ts = getSubtrees t
-        t' = head ts
-        ts' = getSubtrees t' 
 
--- |Returns a list resulting from a preorder traversal of tree t and
--- applying xf to each subtree; direct children of subtrees are skipped whenever
--- the filter-condition f is not met; this is recursively communicated by
--- setting b to False
-
+-- |Returns a list resulting from a preorder traversal of a tree t,
+-- filtered by a function f. To each matched node a function xf is applied.
 preorderFilter :: (SofiaTree -> b) ->
                   (SofiaTree -> Bool) ->
                   SofiaTree ->
@@ -250,76 +223,85 @@ preorderFilter xf f t =
                then [xf t]
                else []
 
+-- |Returns a list resulting from a preorder traversal of a tree t up to
+-- a depth i, filtered by a function f. To each matched internal node a function
+-- xf' and to each match leaf node a function xf'' is applied.
 preorderFilterDepth :: (SofiaTree -> b) ->
+                  (SofiaTree -> b) ->
                   (SofiaTree -> Bool) ->
                   Int ->
                   SofiaTree ->
                   [b]
-preorderFilterDepth xf f i t = preorderFDHelper xf f i t 0
+preorderFilterDepth xf' xf'' f i t = preorderFDHelper xf' xf'' f i t 0
 
+-- |Helper function for @preorderFilterDepth@. The additonal parameter
+-- @cur_depth@ is used to keep track of the current depth during preorder
+-- traversal.
 preorderFDHelper :: (SofiaTree -> b) ->
+                  (SofiaTree -> b) ->
                   (SofiaTree -> Bool) ->
                   Int ->
                   SofiaTree ->
                   Int ->
                   [b]
-preorderFDHelper xf f max_depth t cur_depth =
+preorderFDHelper xf' xf'' f max_depth t cur_depth =
     if or [getSubtrees t == [], max_depth == cur_depth]
-    then filtered
-    else filtered ++ [x
+    then filtered xf''
+    else filtered xf' ++ [x
                      |
                      t' <- (getSubtrees t),
-                     x <- preorderFDHelper xf f max_depth t' (cur_depth + 1)
+                     x <- preorderFDHelper xf' xf'' f max_depth t'
+                            (cur_depth + 1)
                      ]
        where
-        filtered = if f t
+        filtered xf = if f t
                then [xf t]
                else []
 
--- |A list of all variables contained in a tree (does a deep search for
+-- |A list of all variables (atoms) contained in a tree (does a deep search for
 -- variables).
-
 varsDeep :: SofiaTree -> [SofiaTree]
 varsDeep t = rmdups [t' | t' <- preorderFilter id isVar t]
 
--- |A list of free variables in a specific statement with respect to a given
--- proof.
-
+-- |A list of free variables (atoms) in a specific statement with respect
+-- to a given proof.
 varsFree :: [ProofLine] -> SofiaTree -> [SofiaTree]
 varsFree p t = without [t' | t' <- varsDeep t] (varsBound p)
 
 ------------------------ functions for renaming symbols ------------------------
 
--- |Replaces a string x with another string y, if the list rs contains
--- a pair (x, y); otherwise x remains unchanged.
-
+-- |Replaces `x` with `y`, if the list `xys` contains
+-- a pair `(x, y)`; otherwise x remains unchanged.
 substitute :: (Eq a) => [(a, a)] -> a -> a
-substitute rs s =
-    if elem s $ map fst rs
-    then head [snd r | r <- rs, fst r == s]
-    else s
+substitute xys x =
+    if elem x $ map fst xys
+    then head [snd xy | xy <- xys, fst xy == x]
+    else x
 
--- |Replaces an SofiaTree x with another SofiaTree y, if the list rs contains
--- a pair (x', y'), where x', y' are the string representations of the
--- trees x, y; otherwise x remains unchanged.
+-- |Replaces a SofiaTree `t` with another SofiaTree `t'`, if the list cscss
+-- contains a pair `(cs, cs')`, where `cs`, `cs'` are the string
+-- representations of the trees `t`, `t'`; otherwise `t` remains unchanged.
 treeSubstSymbol :: [(String, String)] -> SofiaTree -> SofiaTree
-treeSubstSymbol rs t =
-    newSofiaTree    (substitute rs (getSymbol t))
+treeSubstSymbol cscss t =
+    newSofiaTree    (substitute cscss (getSymbol t))
                     (toType t)
-                    [treeSubstSymbol rs t' | t' <- getSubtrees t]
+                    [treeSubstSymbol cscss t' | t' <- getSubtrees t]
 
--- takes [(atom, atom)] !!
-
+-- |Replaces a SofiaTree `t` (atom) with another SofiaTree `t'`, if the list
+-- `aas` contains a pair `(t, t')` and the number of matched occurrences of
+-- `t` is in the list `is`; otherwise `t` remains unchanged.
 treeSubstTree :: [(SofiaTree, SofiaTree)] -> SofiaTree -> [Int] -> SofiaTree
-treeSubstTree rs t is = 
+treeSubstTree aas t is = 
     if t == t'
     then newSofiaTree (getSymbol t)
                       (toType t)
-                      (fst (treeSubstTreeHelper rs (getSubtrees t) is 1))
+                      (fst (treeSubstTreeHelper aas (getSubtrees t) is 1))
     else t'
        where
-        t' = substitute rs t
+        t' = substitute aas t
 
+-- |Helper function for `treeSubstTree`, where the additional variable `i`
+-- is used to keep track of the number of the matched occurences of `t`.
 treeSubstTreeHelper :: [(SofiaTree, SofiaTree)] ->
                   [SofiaTree] ->
                   [Int] ->
@@ -376,12 +358,16 @@ treeSubstOneSymbol p s s' t =
 
 ---------------------------- SYNAPSIS HELPERS ----------------------------------
 
+-- |Given a list of `ProofLine`s (i.e.\ a proof), a list a `ProofLine`s
+-- corresponding to the last bracket (i.e.\ /mini-proof/) is returned.
 linesLastBracket :: [ProofLine] -> [ProofLine]
 linesLastBracket p =
     reverse p'
        where
         p' = takeWhile (\pl -> numDepth pl >= numCurDepth p) (reverse p)
 
+-- |Returns the `String` representations of all variables which where
+-- introduced in the context of the last /mini-proof/.
 strsLastContext :: [ProofLine] -> [[Char]]
 strsLastContext p =
     without [v | pl <- p', v <- map strFromVar (varsDeep (treeFromLn pl))]
@@ -389,12 +375,15 @@ strsLastContext p =
        where
         p' = linesLastBracket p
 
+-- |Returns the `String` representations of all variables that were
+-- introduced in the last /mini-proof/ and occur on its last line.
 strsContextSpecific :: [ProofLine] -> [[Char]]
 strsContextSpecific p =
     rmdups $ intersect [map strFromVar (varsDeep t), strsLastContext p]
        where
         t = treeFromLn $ last p
 
+-- |Returns a list of `SofiaTree`s (atoms), at the given coordinates.
 atomsFromCoords :: [ProofLine] -> [(Int, Int)] -> [SofiaTree]
 atomsFromCoords p xs =
     [t | x <- xs, t <- atoms x]
@@ -477,7 +466,10 @@ treeDeduceRS subst target indices =
 -- @pl@ to @p@ where the assumption depth is increased by one (with respect to
 -- the last @ProofLine@ in @p@) and the @SofiaTree@ in @pl@ is the result
 -- of parsing @s@.
-assume :: String -> Proof -> Proof
+assume ::    String -- ^The `String` representation of the Sofia statement to
+                    --  be assumed.
+          -> Proof
+          -> Proof
 assume s p = p <+> pl
    where
     p' = toListFromProof p
