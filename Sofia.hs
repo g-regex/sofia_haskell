@@ -565,7 +565,18 @@ apply line pos_list col p = p <+> pl
     t  = treeDeduceAPPLY p' rs t'
     rs = zip (varsFree p' t') (atomsFromCoords p' pos_list)
 
-rightsub :: Int -> Int -> [Int] -> Int -> Int -> Proof -> Proof
+-- |Right substitution: The right hand side of the equality at a given
+-- position replaces certain occurences (whose indicies, numbered in
+-- a preorder traversal, are given in a list) of the left hand side of
+-- the equality in a given statement.
+rightsub ::     Int         -- ^The line number of the equality.
+             -> Int         -- ^The line number of the statement.
+             -> [Int]       -- ^The list of indices
+             -> Int         -- ^The column number of the equality.
+             -> Int         -- ^The column number of the statement.
+             -> Proof       -- ^The `Proof` to which the generated `ProofLine`
+                            --  should be appended to.
+             -> Proof       -- ^The resulting `Proof`.
 rightsub sub_line tgt_line is sub_col tgt_col p = p <+> pl
    where
     p' = toListFromProof p
@@ -578,7 +589,18 @@ rightsub sub_line tgt_line is sub_col tgt_col p = p <+> pl
     subst = head (atomsFromCoords p' [(sub_line, sub_col)])
     target = head (atomsFromCoords p' [(tgt_line, tgt_col)])
 
-leftsub :: Int -> Int -> [Int] -> Int -> Int -> Proof -> Proof
+-- |Leftt substitution: The left hand side of the equality at a given
+-- position replaces certain occurences (whose indicies, numbered in
+-- a preorder traversal, are given in a list) of the right hand side of
+-- the equality in a given statement.
+leftsub ::      Int         -- ^The line number of the equality.
+             -> Int         -- ^The line number of the statement.
+             -> [Int]       -- ^The list of indices
+             -> Int         -- ^The column number of the equality.
+             -> Int         -- ^The column number of the statement.
+             -> Proof       -- ^The `Proof` to which the generated `ProofLine`
+                            --  should be appended to.
+             -> Proof       -- ^The resulting `Proof`.
 leftsub sub_line tgt_line is sub_col tgt_col p = p <+> pl
    where
     p' = toListFromProof p

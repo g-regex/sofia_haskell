@@ -5,7 +5,7 @@ pdf: fixtex doc.pdf
 	rm -rf haddock/haddock.sty
 
 doc.pdf: haddock/*.tex
-	 pdflatex -shell-escape -synctex=1 doc.tex
+	 latexmk -pdf -shell-escape -synctex=1 doc.tex
 
 clean:
 	rm -rf _minted-*

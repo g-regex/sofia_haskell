@@ -116,15 +116,23 @@ instance (Printable a, SType b) => SofiaTreeClass (Tree a b) where
     isFormulator (Node a b cs) =
         not (or [toType b == Statement, toType b == Formula, toType b == Atom])
 
+-- |A `ProofLine` is a `Line` with 4 parameters. The first `Int` is the
+-- number of the `Line` in a `Proof`, the second `Int` is the assumption
+-- depth, the `SofiaTree` is the statement contained in the line and the
+-- `DeductionRule` is the rule that justifies the occurrence of the
+-- `ProofLine` in a `Proof`.
+data ProofLine = Line Int Int SofiaTree DeductionRule
+    deriving Eq -- ^Membership of the `Eq` class is simply derived. This is
+                --  needed to reverse a list of `ProofLine`s, if required.
 
-data ProofLineData a b c d = Line a b c d deriving (Eq)
-
-instance (Show a, Show b, Show c, Show d) => Show (ProofLineData a b c d) where
+-- |TODO
+instance Show (ProofLine) where
     show (Line a b c d) = (show c) ++ " /L" ++ (show a) ++ ": " ++ (show d)
 
-type ProofLine = ProofLineData Int Int SofiaTree DeductionRule
---type ProofLine = (Int, Int, SofiaTree, DeductionRule)
-
+-- |A `Proof` is a list of `ProofLine`s. To allow for creating a customised
+-- instances of `Show` for `Proof`, an own list type is implemented here.
+-- Hence a `Proof` consists of a `PListItem` parametrised by a `ProofLine`
+-- (the head of the list) and a `Proof` (the tail of the list)
 data Proof = PListItem ProofLine Proof | PListEnd
 
 showLine :: ProofLine -> Bool -> String
@@ -137,6 +145,7 @@ showLine pl b =
                         _          -> if b then "╚" else "║"
        showLine' pl i = "║" ++ (showLine' pl (i - 1))
 
+-- |TODO
 instance Show (Proof) where
     show (PListEnd)      = ""
     show (PListItem x PListEnd) = (showLine x False) ++ (show x)
