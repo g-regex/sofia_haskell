@@ -29,7 +29,7 @@ option1 p =
        vs2 <- option p
        return (vs1 ++ vs2)
 
-legalChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['%',' ']
+legalChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['%',' ','+']
 
 sCharacter :: Parser Char
 sCharacter = sat (\x -> elem x legalChars)

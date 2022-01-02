@@ -4,7 +4,7 @@ intersect :: (Eq a) => [[a]] -> [a]
 intersect xss = rmdups [x | xs <- xss, x <- xs, and $ map (elem x) xss]
 
 subset :: (Eq a) => [a] -> [a] -> Bool
-subset xs ys = xs == intersect [xs, ys]
+subset xs ys = (rmdups xs) == intersect [xs, ys]
 
 without :: (Eq a) => [a] -> [a] -> [a]
 without xs ys = [x | x <- xs, not (elem x ys)]

@@ -13,8 +13,12 @@ Portability : POSIX
 The Sofia proof assistant.
 -}
 module Sofia (
-    -- * Deductions
+    -- * General commands
+    postulate,
+
+    -- * Proof building commands
     assume,
+    recall,
     restate,
     selfequate,
     synapsis,
@@ -164,13 +168,19 @@ strFromVar t =
 varsTopLvl :: SofiaTree -> [SofiaTree]
 varsTopLvl t = [t' | t' <- ts, isVar t'] where ts = atomsFromStmts [t]
 
+-- Given a list of `ProofLine`s a list of trees which are in the scope of
+-- the last `ProofLine` in the list is returned.
 treesScope :: [ProofLine] -> [SofiaTree]
 treesScope ls =
     map treeFromLn (reverse (decreasingSublist numDepth (reverse ls)))
 
+-- Given a list of `ProofLine`s a list of atoms which are in the scope of
+-- the last `ProofLine` in the list is returned.
 atomsScope :: [ProofLine] -> [SofiaTree]
 atomsScope ls = atomsFromStmts (treesScope ls)
 
+-- Given a list of `ProofLine`s, a list a variables which are bound on the
+-- last `ProofLine` in the list is returned.
 varsBound :: [ProofLine] -> [SofiaTree]
 varsBound ls = [v | vs <- map varsTopLvl (treesScope ls), v <- vs]
 
@@ -325,35 +335,40 @@ treeSubstTreeHelper rs (t:ts) is i =
 
 -- |Replaces a string "x" with "x'", "x''", "x'''", "x1", "x2", ... based on
 -- the availability as indicated by the list of unavailable variables.
-strRenameStr :: String -> [String] -> String
-strRenameStr s ss =
+strAltName :: String -> [String] -> String
+strAltName s ss =
     head (without ([s] ++  [s ++ s' | s' <- ss']) ss) where
         ss' = ["'", "''", "'''"] ++ [show i | i <- [1..]]
 
--- |Given a variable x, a pair (x, x') is created, where x' is the next
--- available alternative name for x.
-strstrRename :: [ProofLine] -> String -> (String, String)
-strstrRename p s = (s, strRenameStr s (map strFromVar (varsBound p)))
-
 -- |Given a list of variables x1, x2, ... pairs (x1, x1'), (x2, x2') are
--- created, where the xi' are the next available alternatives name for the
+-- created, where the xi' are the next available alternative name for the
 -- xi.
-strstrsRename :: [ProofLine] -> [String] -> [(String, String)]
-strstrsRename p ss = [strstrRename p s | s <- ss]
+strstrsRename ::   [SofiaTree]        -- ^List of unavailable variables.
+                -> [SofiaTree]        -- ^List of variables to be renamed.
+                -> [(String, String)] -- ^A list of pairs of the form
+                                      --  (/old name/, /new name/).
+strstrsRename ts ts' = [strstrR t | t <- ts']
+   where
+    strstrR t = (cs, strAltName cs (map strFromVar ts))
+       where
+        cs = strFromVar t
 
 -- |Replaces all variable names in a given expression by the next available
 -- alternative name.
-treeAutoSubstSymbols :: [ProofLine] -> SofiaTree -> SofiaTree
-treeAutoSubstSymbols p t =
-    treeSubstSymbol rs t where
-        rs = strstrsRename p ss
-        ss = map strFromVar (varsDeep t)
+treeAutoSubstSymbols :: [ProofLine] -> SofiaTree -> Bool -> SofiaTree
+treeAutoSubstSymbols ls t b =
+     (treeSubstSymbol cscs2 (treeSubstSymbol cscs1 t)) where
+        varsMentioned = [t | ts <- map varsDeep $ map treeFromLn ls, t <- ts] 
+        vs1           = (without (varsTopLvl t) (varsBound ls))
+        cscs1         = strstrsRename (without varsMentioned (varsBound ls)) vs1
+        vs2           = if b then [] else (varsDeep t)
+        cscs2         = if b then [] else strstrsRename (varsBound ls) vs2
 
 -- |Renames one variable in an expression to a provided new name.
 treeSubstOneSymbol :: [ProofLine] -> String -> String -> SofiaTree -> SofiaTree
-treeSubstOneSymbol p s s' t =
-    treeSubstSymbol ss t where
-        ss = [(s, strRenameStr s' (map strFromVar (varsBound p)))]
+treeSubstOneSymbol ls cs cs' t =
+    treeSubstSymbol cscss t where
+        cscss = [(cs, strAltName cs' (map strFromVar (varsBound ls)))]
 
 ---------------------------- SYNAPSIS HELPERS ----------------------------------
 
@@ -370,7 +385,7 @@ linesLastBracket p =
 strsLastContext :: [ProofLine] -> [[Char]]
 strsLastContext p =
     without [v | pl <- p', v <- map strFromVar (varsDeep (treeFromLn pl))]
-            (map strFromVar (varsBound p'))
+            (map strFromVar (varsBound p))
        where
         p' = linesLastBracket p
 
@@ -410,6 +425,12 @@ treeSTMT ts =
                      Statement
                      [newSofiaTree [] Atom [newSofiaTree[] Formula ts]]
 
+treeSTMT' :: [SofiaTree] -> SofiaTree
+treeSTMT' ts =
+        newSofiaTree []
+                     Statement
+                     ts
+
 treeDeduceSELF :: SofiaTree -> Int -> SofiaTree
 treeDeduceSELF t i = treeSTMT [statement, treeEQ, statement] where
     statement = getAtom i t
@@ -447,17 +468,29 @@ treeDeduceAPPLY p rs t =
 
 treeDeduceLS :: SofiaTree -> SofiaTree -> [Int] -> SofiaTree
 treeDeduceLS subst target indices =
-    treeSubstTree [(rhs, lhs)] target indices
+    treeSTMT' [treeSubstTree [(rhs, lhs)] target indices]
        where
         lhs = head $ getSubtrees $ stmtFromEQ leftHS subst
         rhs = head $ getSubtrees $ stmtFromEQ rightHS subst
 
 treeDeduceRS :: SofiaTree -> SofiaTree -> [Int] -> SofiaTree
 treeDeduceRS subst target indices =
-    treeSubstTree [(lhs, rhs)] target indices
+    treeSTMT' [treeSubstTree [(lhs, rhs)] target indices]
        where
         lhs = head $ getSubtrees $ stmtFromEQ leftHS subst
         rhs = head $ getSubtrees $ stmtFromEQ rightHS subst
+
+-- |Takes a `String` representation of a Sofia statement and `String`
+-- containing a name for the statement and converts it to an ordered pair
+-- containing the corresponding `SofiaTree` and the name for later use as
+-- an axiom or theorem in a `Proof`.
+postulate ::     String                 -- ^The `String` representation of the
+                                        --  axiom or theorem..
+              -> String                 -- ^The name of the axiom or theorem.
+              -> (SofiaTree, String)    -- ^The resulting `SofiaTree`, paired
+                                        --  with the name of the axiom or
+                                        --  theorem.
+postulate cs cs' = (treeParse cs, cs')
 
 ------------------------- Functions generating Proofs  ------------------------- 
 
@@ -478,12 +511,32 @@ assume s p = p <+> pl
          (1 + numCurDepth p')       -- increase depth
          t
          Assumption]
-    t  = treeAutoSubstSymbols p' (treeParse s) -- substitute reserved variable
+    t  = treeParse s
+
+-- |Takes an ordered pair, previously generated by `postulate`, and
+-- a `Proof` `p` and appends a new `ProofLine` to `p`, containing the
+-- `SofiaTree` from the ordered pair.
+-- The assumption depth is kept the same (with respect to the last
+-- `ProofLine` in `p`).
+recall ::        (SofiaTree, String)    -- ^The ordered pair, previously
+                                        --  generated by `postulate`.
+              -> Proof        -- ^The `Proof` to which the generated `ProofLine`
+                              --  should be appended to.
+              -> Proof        -- ^The resulting `Proof`.
+recall tcs p = p <+> pl
+   where
+    p' = toListFromProof p
+    pl = toProofFromList [newLine
+         (1 + numCurLn p')              -- increase line number
+         (numCurDepth p')               -- keep depth
+         t'
+         Recall]
+    t' = treeAutoSubstSymbols p' (fst tcs) False  -- substitute reserved variable
                                             -- names
 
 -- |Equates a statement at a given position to itself.
-selfequate ::    (Int, Int) -- ^Position of the form /(line, column)/ of the
-                            --  statement that should be equated to itself.
+selfequate ::    (Int, Int)   -- ^Position of the form /(line, column)/ of the
+                              --  statement that should be equated to itself.
               -> Proof        -- ^The `Proof` to which the generated `ProofLine`
                               --  should be appended to.
               -> Proof        -- ^The resulting `Proof`.
@@ -562,7 +615,7 @@ apply line pos_list col p = p <+> pl
          (t)
          (Apply pos_list)]
     t' = getAtom col $ treeFromLn $ getIndex line p'
-    t  = treeDeduceAPPLY p' rs t'
+    t  = treeAutoSubstSymbols p' (treeDeduceAPPLY p' rs t') True
     rs = zip (varsFree p' t') (atomsFromCoords p' pos_list)
 
 -- |Right substitution: The right hand side of the equality at a given
@@ -613,46 +666,119 @@ leftsub sub_line tgt_line is sub_col tgt_col p = p <+> pl
     subst = head (atomsFromCoords p' [(sub_line, sub_col)])
     target = head (atomsFromCoords p' [(tgt_line, tgt_col)])
 
------------------------------------ Examples  ---------------------------------- 
-
-p = assume "[K][b][[K][b]:[[[c][d]f[a]:[b]]]][r]" newProof
-p0 = assume "[[X]=[X]][s]" p
-p1 = selfequate (1,1) p0
-p2 = restate [(1,2)] "y" p1
-p3 = selfequate (2,1) p2
-p4 = restate [(5,1)] "K" p3
-p5 = assume "[K]" p4
-p6 = synapsis p5
-
-px = toListFromProof p6
-px1 = treeFromLn $ getIndex 1 px
-px2 = getIndex 3 (getSubtrees px1)
-
-{->>>> S.a("[[Mark[]] is human][[X][[X] is human]:[[X] can feel]]")
->>>> S.a("[Mark[]]")
->>>> S.d(1,[[2,1]],2)-}
-
-q1 = assume "[[Mark[]] is human][[X][[X] is human]:[[X] can feel]]" newProof
-q2 = assume "[Mark[]]" q1
-q3 = apply 1 [(2,1)] 2 q2
-q4 = synapsis q3
-q5 = synapsis q4
-
-m1 = assume "[X][Y][[X]=[Y]]" newProof
-m2 = selfequate (1,1) m1
-m3 = rightsub 1 2 [1] 3 1 m2
-m4 = synapsis m3
-
-a2 = treeFromLn (plast q2)
-
-a = treeParse "[[a]=[b]]"
-b = treeParse "[r]"
-c = treeParse "[[t]he]"
-b1 = getAtom 1 b
-c1 = getAtom 1 c
-
+--------------------------------------------------------------------------------
+-- TODO:
+-- * handling mistakes
+-- * axiom builders
+-- * add an option for not replacing variable names, when restating
+-- * user interface
+--
 -- QUESTIONS:
 -- How are statements that comprise several atoms are to be replaced? / Is
 -- the form of an equality always [..]=[..]?
 --
 -- Can variables be replaced by statements?
+--
+----------------------------------- Examples  ---------------------------------- 
+--
+-- "Reflexivity of Equality"
+ex1_1 = assume "[X]" newProof
+ex1_2 = selfequate (1,1) ex1_1
+ex1_3 = synapsis ex1_2
+--
+-- "Symmetry of Equality"
+ex3_1 = assume "[X][Y][[X]=[Y]]" newProof
+ex3_2 = selfequate (1,1) ex3_1
+ex3_3 = rightsub 1 2 [1] 3 1 ex3_2
+ex3_4 = synapsis ex3_3
+--
+-- "Transitivity of Equality"
+ex4_1 = assume "[X][Y][Z][[X]=[Y]][[Y]=[Z]]" newProof
+ex4_2 = rightsub 1 1 [1] 5 4 ex4_1
+ex4_3 = synapsis ex4_2
+--
+-- "Mark can feel"
+ex5_1 = assume "[[Mark[]] is human][[X][[X] is human]:[[X] can feel]]" newProof
+ex5_2 = assume "[Mark[]]" ex5_1
+ex5_3 = apply 1 [(2,1)] 2 ex5_2
+ex5_4 = synapsis ex5_3
+ex5_5 = synapsis ex5_4
+--
+-- "Mark can feel 2"
+ex6_1 = assume "[Mark[]][[Mark[]] is human][[X][[X] is human]:[[X] can feel]]"
+            newProof
+ex6_2 = apply 1 [(1,1)] 3 ex6_1
+ex6_3 = synapsis ex6_2
+--
+-- "Subset Axiom"
+axiom_subset = postulate ("[[X][[X] is a set][Y][[Y] is a set]:[[[X] sub " ++
+    "[Y]]=[[x][[x] is a set]:[[[x] in [X]]:[[x] in [Y]]]]]]") "Subset Axiom"
+--
+-- "Subset Reflexivity"
+ex7_1 = assume "[X][[X] is a set]" newProof
+ex7_2 = assume "[x][[x] is a set]" ex7_1
+ex7_3 = assume "[[x] in [X]]" ex7_2
+ex7_4 = restate [(3,1)] "" ex7_3
+ex7_5 = synapsis ex7_4
+ex7_6 = synapsis ex7_5
+ex7_7 = recall axiom_subset ex7_6
+ex7_8 = apply 7 [(1,1), (1,1)] 1 ex7_7
+ex7_9 = leftsub 8 6 [1..] 1 1 ex7_8
+ex7_10 = synapsis ex7_9
+--
+-- "Russel"
+ex8_1 = assume "[X][[x]:[[[x] in [X]]=[[[x] in [x]]:[False[]]]]]" newProof
+ex8_2 = apply 1 [(1,1)] 2 ex8_1
+ex8_3 = assume "[[X] in [X]]" ex8_2
+ex8_4 = rightsub 2 3 [1..] 1 1 ex8_3
+ex8_5 = apply 4 [] 1 ex8_4
+ex8_6 = synapsis ex8_5
+ex8_7 = leftsub 2 6 [1..] 1 1 ex8_6
+ex8_8 = apply 6 [] 1 ex8_7
+ex8_9 = synapsis ex8_8
+--
+-- "Axiom: Addition"
+axiom_addition = postulate "[[x][y][[x]num][[y]num]:[[x]+[y]][[[x]+[y]]num]]"
+                    "Addition"
+--
+-- "Axiom: Number construction"
+axiom_number_construction = postulate "[0[]][[0[]]num][1[]][[1[]]num]"
+                                "Number construction"
+--
+-- "Axiom: Commutativity"
+axiom_commutativity = postulate "[[x][y][[x]num][[y]num]:[[[x]+[y]]=[[y]+[x]]]]"
+                        "Commutativity"
+--
+-- "Axiom: Associativity"
+axiom_associativity = postulate ("[[x][y][z][[x]num][[y]num][[z]num]:" ++
+                        "[[[[x]+[y]]+[z]]=[[x]+[[y]+[z]]]]]")
+                        "Associativity"
+--
+-- "Axiom: Identity"
+axiom_identity = postulate "[[x][[x]num]:[[[0[]]+[x]]=[x]]]" "Identity"
+--
+-- "Right Identity"
+ex9_1 = assume "[x][[x]num]" newProof
+ex9_2 = recall axiom_identity ex9_1
+ex9_3 = recall axiom_commutativity ex9_2
+ex9_4 = apply 2 [(1,1)] 1 ex9_3
+ex9_5 = recall axiom_number_construction ex9_4
+ex9_6 = apply 3 [(1,1),(5,1)] 1 ex9_5
+ex9_7 = recall axiom_identity ex9_6
+ex9_8 = apply 7 [(1,1)] 1 ex9_7
+ex9_9 = rightsub 8 6 [1..] 1 1 ex9_8
+ex9_10 = synapsis ex9_9
+--
+-- "Axiom: Variable Introduction"
+axiom_variable_introduction = postulate "[[x]:[y][[y]=[x]]]"
+                                "Variable Introduction"
+--
+-- "Existential Theorem Example"
+right_identity = (treeFromLn $ plast ex9_10, "Right Identity")
+ex10_1 = recall axiom_number_construction newProof
+ex10_2 = recall right_identity ex10_1
+ex10_3 = recall axiom_variable_introduction ex10_2
+ex10_4 = apply 3 [(1,1)] 1 ex10_3
+ex10_5 = leftsub 4 1 [1..] 2 2 ex10_4
+ex10_6 = leftsub 4 2 [1..] 2 1 ex10_5
+ex10_7 = restate [(5,1),(6,1)] "x" ex10_6
