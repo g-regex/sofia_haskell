@@ -13,6 +13,9 @@ Portability : POSIX
 The Sofia proof assistant.
 -}
 module Sofia (
+    -- * Naming Convention
+    -- $naming
+
     -- * General commands
     postulate,
 
@@ -24,10 +27,19 @@ module Sofia (
     synapsis,
     apply,
     rightsub,
-    leftsub
+    leftsub,
 
-    -- * Naming Convention
-    -- $naming
+    -- * Patterns
+    -- $patterns
+    Pattern,
+    patternFromTree,
+    patternAtomParse,
+    -- $somepatterns
+    patternVar,
+    patternEq,
+    patternImp,
+    matchesPattern
+    -- $matchingexample
 ) where
 
 --------------------------- Using Graham Hutton's code -------------------------
@@ -97,6 +109,8 @@ main = pure ()
 --
 --      * @strstr@ (@(String, String)@)
 --
+--      * @pattern@ (@Pattern@)
+--
 -- Functions not matching any of these return types (maybe because the
 -- return type is more general) are not prefixed by the above rule. That is
 -- for example the case for all deduction functions as their return type is
@@ -120,34 +134,86 @@ numCurDepth [] = 0
 numCurDepth x = numDepth $ last x
 
 ----------------------------------- patterns -----------------------------------
+-- $patterns
+-- In order to identify certain classes of expressions the `Pattern` data
+-- type is introduced.
 
+-- |A `Pattern` is an ordered pair of an integer and a list. The integer
+-- indicates the depth of a to be performed preorder traversal of
+-- a `SofiaTree`. The list contains ordered pairs where the first component
+-- indicates the expected `TypeOfNode` of a traversed node and the second
+-- component indicates the number of child nodes or 0, if the node is
+-- a leaf node. Nodes at the maximum depth of the preorder traversal are
+-- considered leaf nodes..
 type Pattern = (Int, [(TypeOfNode, Int)])
 
-patternFromTree :: SofiaTree -> Int -> Pattern
+-- |Creates a `Pattern` from a `SofiaTree` with a given maximum depth.
+patternFromTree ::     SofiaTree    -- ^The `SofiaTree`.
+                    -> Int          -- ^The maximum depth (-1 means infinity).
+                    -> Pattern      -- ^The resulting pattern.
 patternFromTree t depth =
     (depth, preorderFilterDepth (\x -> (toType x, length $ getSubtrees x))
                         (\x -> (toType x, 0))
                         (\x -> True) depth t)
 
-patternAtomParse :: String -> Int -> Pattern
+-- |Creates a `Pattern` with a specified maximum depth from a given `String`
+-- containing a statement with exactly one atom. Instead of starting the
+-- preorder traversal at the root of the corresponding `SofiaTree`, the
+-- traversal is started at the only child of the root, which is an atom.
+patternAtomParse ::    String   -- ^The String.
+                    -> Int      -- ^The maximum depth (-1 means infinity).
+                    -> Pattern  -- ^The resulting pattern.
 patternAtomParse cs depth =
     patternFromTree (head $ getSubtrees $ treeParse cs) depth
 
+-- $somepatterns
+-- `Pattern`s for common structures can now be created.
+-- To identify a `SofiaTree` containing a variable we can for example
+-- create the following `Pattern`:
+-- 
+-- >>> patternAtomParse "[x]" (-1)
+-- (-1,[(Atom,1),(Formula,1),(Symbol,0)])
+--
+-- For convenience we create `Pattern`s for the most commonly occurring
+-- structures, namely variables, equalities and implications.
+
+-- |Contains the pattern to identify a variable.
 patternVar :: Pattern
 patternVar = patternAtomParse "[x]" (-1)
 
+-- |Contains the pattern to identify an equality.
 patternEq :: Pattern
 patternEq = patternAtomParse "[[x]=[y]]" (2)
 
+-- |Contains the pattern to identify an implication.
 patternImp :: Pattern
 patternImp = patternAtomParse "[[x]:[y]]" (2)
 
-matchesPattern :: Pattern -> SofiaTree -> Bool
+-- $matching
+-- To simplify the code further, the following `Pattern` matching commands
+-- are introduced.
+
+-- |Returns `True` if the given `SofiaTree` matches the given pattern and
+-- `False` otherwise.
+matchesPattern ::      Pattern      -- ^The `Pattern` to be matched.
+                    -> SofiaTree    -- ^The `SofiaTree`.
+                    -> Bool         -- ^The resulting `Bool`.
 matchesPattern (i, yis) t = patternFromTree t i == (i, yis)
 
 -- |'True' if a SofiaTree is an Atom containing a variable
 isVar :: SofiaTree -> Bool
 isVar t =  matchesPattern patternVar t
+
+-- $matchingexample
+-- We can now check whether a given `SofiaTree` is for example a variable.
+-- Since our template `Pattern` was created with `patternAtomParse`, we
+-- have to make sure that the `SofiaTree` which should match the `Pattern`
+-- is an atom as well. To create an example `SofiaTree` we use the
+-- `treeParse` function from the `SofiaTree` module. To access the children
+-- of the root we use the `getSubtrees` function from the same module.
+--
+-- >>> isVar $ head $ getSubtrees $ treeParse "[a]"
+-- True
 
 ---------------------- functions to extract variables --------------------------
 
@@ -159,7 +225,7 @@ atomsFromStmts ts =
     t' <- filter (\x -> toType x == Atom) (getSubtrees t)
     ]
 
-strFromVar :: SofiaTree -> [Char] -- TODO: write a more general function
+strFromVar :: SofiaTree -> [Char]
 strFromVar t =
     if matchesPattern patternVar t
     then last $ preorderFilter getSymbol (\x -> True) t

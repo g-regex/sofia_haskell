@@ -30,7 +30,8 @@ fixtex: haddock
 			 b=gensub(/^\\end\{tabular\}\]/, "}]", "g", a);
 			 c=gensub(/\{\\char 91\}/, "[", "g", b);
 			 d=gensub(/\{\\char 93\}/, "]", "g", c);
-			 print d}' $$f > $$(basename $$f .tex)_fixed.tex
+			 e=gensub(/\\vbox/, "", "g", d);
+			 print e}' $$f > $$(basename $$f .tex)_fixed.tex
 		rm $$f
 		mv $$(basename $$f .tex)_fixed.tex $$f
 	done
