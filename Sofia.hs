@@ -530,7 +530,7 @@ recall tcs p = p <+> pl
          (1 + numCurLn p')              -- increase line number
          (numCurDepth p')               -- keep depth
          t'
-         Recall]
+         (Recall (snd tcs))]
     t' = treeAutoSubstSymbols p' (fst tcs) False  -- substitute reserved variable
                                             -- names
 
@@ -591,8 +591,11 @@ synapsis p = p <+> pl
          (1 + numCurLn p')                -- increase line number
          (numCurDepth p' - 1)             -- decrease assumption depth
          (t)
-         Synapsis]
+         (Synapsis i1 i2)]
     t  = treeDeduceSYN p'
+    ls = linesLastBracket p'
+    i1 = numLine (head ls)
+    i2 = numLine (last ls)
 
 -- |Applies an implication. Given a list of statements (their positions),
 -- free variables in the implication are replaced by the statements. Then
@@ -613,7 +616,7 @@ apply line pos_list col p = p <+> pl
          (1 + numCurLn p')          -- increase line number
          (numCurDepth p')           -- keep depth the same
          (t)
-         (Apply pos_list)]
+         (Apply line pos_list col)]
     t' = getAtom col $ treeFromLn $ getIndex line p'
     t  = treeAutoSubstSymbols p' (treeDeduceAPPLY p' rs t') True
     rs = zip (varsFree p' t') (atomsFromCoords p' pos_list)
@@ -637,12 +640,12 @@ rightsub sub_line tgt_line is sub_col tgt_col p = p <+> pl
          (1 + numCurLn p')               -- increase line number
          (numCurDepth p')
          (t)
-         RightSub]
+         (RightSub sub_line tgt_line is sub_col tgt_col)]
     t  = treeDeduceRS subst target is
     subst = head (atomsFromCoords p' [(sub_line, sub_col)])
     target = head (atomsFromCoords p' [(tgt_line, tgt_col)])
 
--- |Leftt substitution: The left hand side of the equality at a given
+-- |Left substitution: The left hand side of the equality at a given
 -- position replaces certain occurences (whose indicies, numbered in
 -- a preorder traversal, are given in a list) of the right hand side of
 -- the equality in a given statement.
@@ -661,7 +664,7 @@ leftsub sub_line tgt_line is sub_col tgt_col p = p <+> pl
          (1 + numCurLn p')               -- increase line number
          (numCurDepth p')
          (t)
-         LeftSub]
+         (LeftSub sub_line tgt_line is sub_col tgt_col)]
     t  = treeDeduceLS subst target is
     subst = head (atomsFromCoords p' [(sub_line, sub_col)])
     target = head (atomsFromCoords p' [(tgt_line, tgt_col)])

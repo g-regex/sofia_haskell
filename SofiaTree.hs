@@ -1,7 +1,21 @@
 {-# OPTIONS_HADDOCK prune #-}
 
+{-|
+Module      : SofiaTree
+Description :
+Copyright   :
+License     :
+Maintainer  :
+Stability   : experimental
+Portability : POSIX
+
+Data types for the Sofia proof assistant.
+-}
+
 module SofiaTree
-    (SofiaTree,
+    (Proof,
+     ProofLine,
+     SofiaTree,
      DeductionRule (Assumption, Recall, Selfequate, Restate, Synapsis, Apply,
                     RightSub, LeftSub),
      TypeOfNode (Atom, Statement, Formula, Implication, Equality, Symbol,
@@ -12,8 +26,6 @@ module SofiaTree
      getSymbol,
      toSofiaTree,
      toType,
-     Proof,
-     ProofLine,
      newProof,
      newLine,
      toListFromProof,
@@ -40,8 +52,14 @@ toString :: Printable a => [a] -> String
 toString [] = ""
 toString (x:xs) = (printable x) ++ (toString xs)
 
+-- |Nodes in a `SofiaTree` must have a type not equal to `Error`.
 data TypeOfNode = Atom | Statement | Formula | Implication | Equality | Symbol |
-                  Error deriving (Show, Eq)
+                  Error
+                  deriving (Show -- ^`TypeOfNode` derives an instance of `Show`
+                                 --  to display it.
+                           , Eq  -- ^`TypeOfNode` can be compared in an
+                                 --  (non-)equality. 
+                           )
 -- |A 'Tree' is a Node with two types of values (a list and another value)
 -- and a list of sub'Tree's.
 data Tree a b = Node [a] b [Tree a b]
@@ -72,9 +90,33 @@ instance (Printable a, Show a, SType b, Show b) => Show (Tree a b) where
 
 -- |A (possibly parametrised) deduction rule.
 data DeductionRule = Assumption | Selfequate (Int, Int) | Restate [(Int, Int)]
-                     | Synapsis | Apply [(Int, Int)] | RightSub | LeftSub
-                     | Recall
-                     deriving (Show, Eq)
+                     | Synapsis Int Int | Apply Int [(Int, Int)] Int
+                     | RightSub Int Int [Int] Int Int
+                     | LeftSub  Int Int [Int] Int Int
+                     | Recall String
+                     deriving (Eq -- ^`Deduction` rules are a derived instance
+                                  --  of the `Eq` class.
+                              )
+
+-- |`DeductionRule`s are displayed in the same way as in the Python
+-- implementation.
+instance Show (DeductionRule) where
+    show (Assumption)          = "assumption."
+    show (Selfequate (a,b))    = "self-equate from L" ++ (show a) ++ "(" ++
+                                 (show b) ++ ")."
+    show (Restate xs)          = "restatement (see lines " ++ (show xs) ++ ")."
+    show (Synapsis a b)        = "synapsis (L" ++ (show a) ++ "-" ++ (show b) ++
+                                 ")."
+    show (Apply a xs b)        = "application of L" ++ (show a) ++ "." ++
+                                (show b) ++ " (with concretization " ++
+                                (show xs) ++ ")."
+    show (RightSub a c xs b d) = "right substitution, L" ++ (show a) ++ "(" ++
+                                (show b) ++ ") in L" ++ (show c) ++ "(" ++
+                                (show d) ++ ")."
+    show (LeftSub a c xs b d)  = "left substitution, L" ++ (show a) ++ "(" ++
+                                (show b) ++ ") in L" ++ (show c) ++ "(" ++
+                                (show d) ++ ")."
+    show (Recall a)            = "recalling " ++ (show a) ++ "."
 
 -- |A 'Tree' containing a parsed Sofia string. Each 'Node' of such a 'Tree'
 -- contains a list of 'Char's (only non-empty, if the 'TypeOfNode' is
@@ -126,7 +168,8 @@ data ProofLine = Line Int Int SofiaTree DeductionRule
     deriving Eq -- ^Membership of the `Eq` class is simply derived. This is
                 --  needed to reverse a list of `ProofLine`s, if required.
 
--- |TODO
+-- |A `ProofLine` shows a string representation of the Sofia statement it
+-- contains as well as the justifying `DeductionRule`.
 instance Show (ProofLine) where
     show (Line a b c d) = (show c) ++ " /L" ++ (show a) ++ ": " ++ (show d)
 
@@ -146,7 +189,8 @@ showLine pl b =
                         _          -> if b then "╚" else "║"
        showLine' pl i = "║" ++ (showLine' pl (i - 1))
 
--- |TODO
+-- |A `Proof` is displayed in bracket proof form like in the Python
+-- version.
 instance Show (Proof) where
     show (PListEnd)      = ""
     show (PListItem x PListEnd) = (showLine x False) ++ (show x)
