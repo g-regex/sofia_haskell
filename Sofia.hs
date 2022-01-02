@@ -38,8 +38,15 @@ module Sofia (
     patternVar,
     patternEq,
     patternImp,
-    matchesPattern
+    matchesPattern,
     -- $matchingexample
+
+    -- *Variables
+    -- $variables
+    varsTopLvl,
+    varsBound,
+    varsDeep,
+    varsFree
 ) where
 
 --------------------------- Using Graham Hutton's code -------------------------
@@ -216,8 +223,14 @@ isVar t =  matchesPattern patternVar t
 -- True
 
 ---------------------- functions to extract variables --------------------------
+-- $variables
+-- Variables are a fundamental concept in the Sofia language. To handle
+-- them efficiently a number of functions are introduced.
 
-atomsFromStmts :: [SofiaTree] -> [SofiaTree]
+-- |Given a list of statements a list of atoms which make up these
+-- statements is returned.
+atomsFromStmts ::      [SofiaTree]  -- ^The list of statements.
+                    -> [SofiaTree]  -- ^The list of atoms.
 atomsFromStmts ts = 
     [t'
     |
@@ -225,27 +238,35 @@ atomsFromStmts ts =
     t' <- filter (\x -> toType x == Atom) (getSubtrees t)
     ]
 
-strFromVar :: SofiaTree -> [Char]
+-- |Given an atom containing a variable, the symbol (i.e.\ `String`)
+-- representing the variable is returned.
+strFromVar ::      SofiaTree  -- ^The atom containing a variable.
+                -> [Char]     -- ^The `String` representation of the variable.
 strFromVar t =
     if matchesPattern patternVar t
     then last $ preorderFilter getSymbol (\x -> True) t
     else ""
 
-varsTopLvl :: SofiaTree -> [SofiaTree]
+-- |Given a statement the variables introduced as children of the root of
+-- the corresponding `SofiaTree` are returned in a list.
+varsTopLvl ::   SofiaTree   -- ^The statement.
+             -> [SofiaTree] -- ^The list of variables.
 varsTopLvl t = [t' | t' <- ts, isVar t'] where ts = atomsFromStmts [t]
 
--- Given a list of `ProofLine`s a list of trees which are in the scope of
+-- |Given a list of `ProofLine`s a list of trees which are in the scope of
 -- the last `ProofLine` in the list is returned.
-treesScope :: [ProofLine] -> [SofiaTree]
+treesScope ::      [ProofLine]  -- ^The list of `ProofLine`s.
+                -> [SofiaTree]  -- ^The resulting list of `SofiaTree`s.
 treesScope ls =
     map treeFromLn (reverse (decreasingSublist numDepth (reverse ls)))
 
--- Given a list of `ProofLine`s a list of atoms which are in the scope of
+-- |Given a list of `ProofLine`s a list of atoms which are in the scope of
 -- the last `ProofLine` in the list is returned.
-atomsScope :: [ProofLine] -> [SofiaTree]
+atomsScope ::      [ProofLine]  -- ^The list of `ProofLine`s.
+                -> [SofiaTree]  -- ^The resulting list of atoms.
 atomsScope ls = atomsFromStmts (treesScope ls)
 
--- Given a list of `ProofLine`s, a list a variables which are bound on the
+-- |Given a list of `ProofLine`s, a list a variables which are bound on the
 -- last `ProofLine` in the list is returned.
 varsBound :: [ProofLine] -> [SofiaTree]
 varsBound ls = [v | vs <- map varsTopLvl (treesScope ls), v <- vs]
@@ -333,14 +354,18 @@ preorderFDHelper xf' xf'' f max_depth t cur_depth =
                then [xf t]
                else []
 
--- |A list of all variables (atoms) contained in a tree (does a deep search for
--- variables).
-varsDeep :: SofiaTree -> [SofiaTree]
+-- |Returns a list of all variables (atoms) contained in a `SofiaTree`
+-- (does a deep search for variables).
+varsDeep ::    SofiaTree    -- ^The `SofiaTree` to be searched for variables.
+            -> [SofiaTree]  -- ^The resulting list of found variables.
 varsDeep t = rmdups [t' | t' <- preorderFilter id isVar t]
 
--- |A list of free variables (atoms) in a specific statement with respect
--- to a given proof.
-varsFree :: [ProofLine] -> SofiaTree -> [SofiaTree]
+-- |Returns a list of free variables (atoms) in a specific statement with
+-- respect to a given proof.
+varsFree ::     [ProofLine] -- ^A list a `ProofLine`s constituting the proof.
+             -> SofiaTree   -- ^The `SofiaTree` which should be searched for
+                            --  free variables.
+             -> [SofiaTree] -- ^The resulting list of free variables.
 varsFree p t = without [t' | t' <- varsDeep t] (varsBound p)
 
 ------------------------ functions for renaming symbols ------------------------
