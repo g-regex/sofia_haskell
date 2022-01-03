@@ -300,7 +300,7 @@ atomsScope ls = atomsFromStmts (treesScope ls)
 ---------------------- functions to extract variables --------------------------
 -- $variables
 -- Variables are a fundamental concept in the Sofia language. To handle
--- them efficiently a number of functions are introduced.
+-- them efficiently a number of functions is introduced.
 
 -- |Given an atom containing a variable, the symbol (i.e.\ `String`)
 -- representing the variable is returned.
@@ -739,8 +739,8 @@ selfequate (line, col) p = p <+> l
     t  = treeDeduceSELF (treeFromLn $ getIndex line p') col
 
 -- TODO: possible improvement: substitute more than one free variable
--- |Restates given statements and renames the first free variable with
--- a provided name.
+-- |Restates given statements and renames the first free variable to
+-- a given name (or the first available alternative).
 restate ::       [(Int, Int)] -- ^List of positions of the form /(line, column)/
                               --  of the atoms from which the new statement
                               --  should be built.
@@ -974,9 +974,10 @@ ex10_6 = leftsub 4 2 [1..] 2 1 ex10_5
 ex10_7 = restate [(5,1),(6,1)] "x" ex10_6
 
 -- $examples
--- At the end of the source of the `Sofia` some of the examples from the
--- Python version were converted to this Haskell version. For completeness'
--- sake the output of a selection of these examples is given here.
+-- At the end of the source code of the `Sofia` module some of the examples
+-- from the Python version were converted to this Haskell version. For
+-- completeness' sake the output of a selection of these examples is given
+-- here.
 --
 -- >>> ex1_3
 -- ╔[X] /L1: assumption.
