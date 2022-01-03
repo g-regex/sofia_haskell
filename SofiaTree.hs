@@ -219,6 +219,9 @@ plast (PListItem x y) = plast y
 -- |The infix operator `<+>` concatenates two `Proofs`. In practice it is
 -- only used to append a `Proof` containing a single `ProofLine` to an
 -- existing `Proof`.
+(<+>) ::    Proof  -- ^Some `Proof`.
+         -> Proof  -- ^Another `Proof`.
+         -> Proof  -- ^The concatenation of the two `Proof`s.
 infixr 5 <+>
 PListItem v w <+> PListEnd = PListItem v w
 PListEnd <+> PListItem x y = PListItem x y
@@ -229,12 +232,14 @@ preverse (PListItem x PListEnd) = PListItem x PListEnd
 preverse (PListItem x y) = (preverse y) <+> (PListItem x PListEnd)
 
 -- |Converts a list of `ProofLine`s to a `Proof`.
-toProofFromList :: [ProofLine] -> Proof
+toProofFromList ::     [ProofLine] -- ^The list of `ProofLine`s to be converted.
+                    -> Proof       -- ^The resulting `Proof`.
 toProofFromList [] = PListEnd
 toProofFromList (pl:pls) = PListItem pl (toProofFromList pls)
 
 -- |Converts a `Proof` to a list of `ProofLine`s.
-toListFromProof :: Proof -> [ProofLine]
+toListFromProof ::      Proof       -- ^The `Proof` to be converted.
+                     -> [ProofLine] -- ^The resulting list of `ProofLine`s.
 toListFromProof PListEnd = []
 toListFromProof (PListItem pl pls) = pl : (toListFromProof pls)
 

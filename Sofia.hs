@@ -423,7 +423,7 @@ varsDeep t = rmdups [t' | t' <- preorderFilter id isVar t]
 
 -- |Returns a list of free variables (atoms) in a specific statement with
 -- respect to a given proof.
-varsFree ::     [ProofLine] -- ^A list a `ProofLine`s constituting the proof.
+varsFree ::     [ProofLine] -- ^A list of `ProofLine`s constituting the proof.
              -> SofiaTree   -- ^The `SofiaTree` which should be searched for
                             --  free variables.
              -> [SofiaTree] -- ^The resulting list of free variables.
@@ -510,9 +510,12 @@ treeSubstTreeHelper rs (t:ts) is i =
         rest_tree  = fst rest
         rest_i     = snd rest
 
--- |Replaces a string "x" with "x'", "x''", "x'''", "x1", "x2", ... based on
--- the availability as indicated by the list of unavailable variables.
-strAltName :: String -> [String] -> String
+-- |Replaces a string "x" with "x", "x'", "x''", "x'''", "x1", "x2", ...
+-- based on the availability as indicated by the list of unavailable
+-- variables.
+strAltName ::      String   -- ^The `String` to be replaced.
+                -> [String] -- ^A list of `String`s which are unavailable.
+                -> String   -- ^The (possibly) replaced `String`.
 strAltName s ss =
     head (without ([s] ++  [s ++ s' | s' <- ss']) ss) where
         ss' = ["'", "''", "'''"] ++ [show i | i <- [1..]]
@@ -532,7 +535,7 @@ strstrsRename ts ts' = [strstrR t | t <- ts']
 
 -- |Replaces all variable names in a given expression by the next available
 -- alternative name in the context of a given proof.
-treeAutoSubstSymbols ::    [ProofLine] -- ^A list a `ProofLine`s constituting
+treeAutoSubstSymbols ::    [ProofLine] -- ^A list of `ProofLine`s constituting
                                        --  the proof.
                         -> SofiaTree   -- ^The expression in which variables
                                        --  shoujld be renamed.
@@ -553,7 +556,7 @@ treeAutoSubstSymbols ls t b =
 
 -- |Renames one variable in an expression to a provided new name or the
 -- next available alternative in the context of a given proof.
-treeSubstOneSymbol ::   [ProofLine] -- ^A list a `ProofLine`s constituting
+treeSubstOneSymbol ::   [ProofLine] -- ^A list of `ProofLine`s constituting
                                     --  the proof.
                      -> String      -- ^`String` representation of the variable
                                     --  to be renamed (e.g.\ "x")
