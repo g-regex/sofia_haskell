@@ -31,7 +31,9 @@ fixtex: haddock
 			 c=gensub(/\{\\char 91\}/, "[", "g", b);
 			 d=gensub(/\{\\char 93\}/, "]", "g", c);
 			 e=gensub(/\\vbox/, "", "g", d);
-			 print e}' $$f > $$(basename $$f .tex)_fixed.tex
+			 f=gensub(/^\\end\{verbatim\}\}$$/, "\\\\end{verbatim}}\\\\vspace{-0.5cm}", "g", e);
+			 g=gensub(/^\\begin\{quote\}$$/, "\\\\begin{quote}\\\\vbox%", "g", f);
+			 print g}' $$f > $$(basename $$f .tex)_fixed.tex
 		rm $$f
 		mv $$(basename $$f .tex)_fixed.tex $$f
 	done

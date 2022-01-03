@@ -47,10 +47,10 @@ module Sofia (
 
     -- *Scope
     -- $scope
-    -- $scopeexample
     atomsFromStmts,
     treesScope,
     atomsScope,
+    -- $scopeexample
 
     -- *Variables
     -- $variables
@@ -98,6 +98,8 @@ main = pure ()
 --
 --
 --      * @t@ (arbitrary @SofiaTree@)
+--
+--      * @a@ (@SofiaTree@ of type @Atom@)
 --
 --      * @v@ (@SofiaTree@ of type @Atom@ which contains a variable)
 --
@@ -281,7 +283,7 @@ atomsScope ls = atomsFromStmts (treesScope ls)
 
 -- $scopeexample
 -- To illustrate the behaviour of the functions in this section, we consider the
--- following partial `Proof` of Russel's paradox. We use the function
+-- following partial `Proof` of Russell's paradox. We use the function
 -- `toListFromProof` to convert from a `Proof` to a list of `ProofLine`s.
 -- 
 -- >>> ex8_6
@@ -291,11 +293,17 @@ atomsScope ls = atomsFromStmts (treesScope ls)
 -- ║║[[[X]in[X]]:[False[]]] /L4: right substitution, L2(1) in L3(1).
 -- ║╚[False[]] /L5: application of L4.1 (with concretization []).
 -- ║[[[X]in[X]]:[False[]]] /L6: synapsis (L3-5).
+-- >>> treesScope $ toListFromProof ex8_6
+-- [[X][[x]:[[[x]in[X]]=[[[x]in[x]]:[False[]]]]],[[[X]in[X]]=[[[X]in[X]]:[False[]]]],
+-- [[[X]in[X]]:[False[]]]]
+-- >>> atomsFromStmts $ treesScope $ toListFromProof ex8_6
+-- [[X],[[x]:[[[x]in[X]]=[[[x]in[x]]:[False[]]]]],[[[X]in[X]]=[[[X]in[X]]:[False[]]]],
+-- [[[X]in[X]]:[False[]]]]
 -- >>> atomsScope $ toListFromProof ex8_6
 -- [[X],[[x]:[[[x]in[X]]=[[[x]in[x]]:[False[]]]]],[[[X]in[X]]=[[[X]in[X]]:[False[]]]],
 -- [[[X]in[X]]:[False[]]]]
 --
--- The resulting list contains all atoms from lines 1, 2 and
+-- The resulting lists contain all trees/atoms from lines 1, 2 and
 -- 6 respectively.
 
 ---------------------- functions to extract variables --------------------------
@@ -433,7 +441,7 @@ varsFree p t = without [t' | t' <- varsDeep t] (varsBound p)
 -- enable us to do all these things.
 
 -- |Replaces `x` with `y`, if the list `xys` of ordered pairs contains
--- a pair `(x, y)`; otherwise x remains unchanged.
+-- a pair (@x@, @y@); otherwise x remains unchanged.
 substitute :: (Eq a) => 
                  [(a, a)] -- ^The list `xys` of ordered pairs (i.e.\ possible
                           --  substitutions).
@@ -445,7 +453,7 @@ substitute xys x =
     else x
 
 -- |Replaces a SofiaTree `t` with another SofiaTree `t'`, if the list `cscss`
--- contains a pair `(cs, cs')`, where `cs`, `cs'` are the string
+-- contains a pair (@cs@, @cs'@), where `cs`, `cs'` are the string
 -- representations of the trees `t`, `t'`; otherwise `t` remains unchanged.
 treeSubstSymbol ::      [(String, String)] -- ^The list `cscss` of ordered pairs
                                            --  (i.e.\ possible substitutions).
@@ -458,7 +466,7 @@ treeSubstSymbol cscss t =
                     [treeSubstSymbol cscss t' | t' <- getSubtrees t]
 
 -- |Replaces a SofiaTree `t` (atom) with another SofiaTree `t'`, if the list
--- `aas` contains a pair `(t, t')` and the number of matched occurrences of
+-- `aas` contains a pair (@t@, @t'@) and the number of matched occurrences of
 -- `t` is in the list `is`; otherwise `t` remains unchanged.
 treeSubstTree ::    [(SofiaTree, SofiaTree)] -- ^The list `cscss` of ordered pairs
                                              --  (i.e.\ possible substitutions).
@@ -509,9 +517,9 @@ strAltName s ss =
     head (without ([s] ++  [s ++ s' | s' <- ss']) ss) where
         ss' = ["'", "''", "'''"] ++ [show i | i <- [1..]]
 
--- |Given a list of variables x1, x2, ... pairs (x1, x1'), (x2, x2') are
--- created, where the xi' are the next available alternative name for the
--- xi.
+-- |Given a list of variables @x1@, @x2@, ... pairs (@x1@, @x1'@), (@x2@,
+-- @x2'@) are created, where the @xi'@ are the next available alternative
+-- name for the @xi@.
 strstrsRename ::   [SofiaTree]        -- ^List of unavailable variables.
                 -> [SofiaTree]        -- ^List of variables to be renamed.
                 -> [(String, String)] -- ^A list of pairs of the form
@@ -974,16 +982,16 @@ ex10_5 = leftsub 4 1 [1..] 2 2 ex10_4
 ex10_6 = leftsub 4 2 [1..] 2 1 ex10_5
 ex10_7 = restate [(5,1),(6,1)] "x" ex10_6
 
+-- >>> ex1_3
+-- ╔[X] /L1: assumption.
+-- ╚[[X]=[X]] /L2: self-equate from L1(1).
+-- [[X]:[[X]=[X]]] /L3: synapsis (L1-2).
+
 -- $examples
 -- At the end of the source code of the `Sofia` module some of the examples
 -- from the Python version were converted to this Haskell version. For
 -- completeness' sake the output of a selection of these examples is given
 -- here.
---
--- >>> ex1_3
--- ╔[X] /L1: assumption.
--- ╚[[X]=[X]] /L2: self-equate from L1(1).
--- [[X]:[[X]=[X]]] /L3: synapsis (L1-2).
 --
 -- >>> ex3_4
 -- ╔[X][Y][[X]=[Y]] /L1: assumption.
@@ -995,6 +1003,18 @@ ex10_7 = restate [(5,1),(6,1)] "x" ex10_6
 -- ╔[X][Y][Z][[X]=[Y]][[Y]=[Z]] /L1: assumption.
 -- ╚[[X]=[Z]] /L2: right substitution, L1(5) in L1(4).
 -- [[X][Y][Z][[X]=[Y]][[Y]=[Z]]:[[X]=[Z]]] /L3: synapsis (L1-2).
+--
+-- >>> ex9_10
+-- ╔[x][[x]num] /L1: assumption.
+-- ║[[x'][[x']num]:[[[0[]]+[x']]=[x']]] /L2: recalling "Identity".
+-- ║[[x'][y][[x']num][[y]num]:[[[x']+[y]]=[[y]+[x']]]] /L3: recalling "Commutativity".
+-- ║[[[0[]]+[x]]=[x]] /L4: application of L2.1 (with concretization [(1,1)]).
+-- ║[0[]][[0[]]num][1[]][[1[]]num] /L5: recalling "Number construction".
+-- ║[[[x]+[0[]]]=[[0[]]+[x]]] /L6: application of L3.1 (with concretization [(1,1),(5,1)]).
+-- ║[[x'][[x']num]:[[[0[]]+[x']]=[x']]] /L7: recalling "Identity".
+-- ║[[[0[]]+[x]]=[x]] /L8: application of L7.1 (with concretization [(1,1)]).
+-- ╚[[[x]+[0[]]]=[x]] /L9: right substitution, L8(1) in L6(1).
+-- [[x][[x]num]:[[[x]+[0[]]]=[x]]] /L10: synapsis (L1-9).
 --
 -- >>> ex10_7
 -- [0[]][[0[]]num][1[]][[1[]]num] /L1: recalling "Number construction".

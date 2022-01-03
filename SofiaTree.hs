@@ -14,33 +14,40 @@ specifically for the Sofia proof assistant.
 -}
 
 module SofiaTree
-    (Tree,
+    (TypeOfNode (Atom, Statement, Formula, Implication, Equality, Symbol,
+                 Error),
+     Tree,
      SofiaTree,
-     ProofLine,
      DeductionRule (Assumption, Recall, Selfequate, Restate, Synapsis, Apply,
                     RightSub, LeftSub),
-     TypeOfNode (Atom, Statement, Formula, Implication, Equality, Symbol,
-                 Error),
+     ProofLine,
      Proof,
-     newSofiaTree,
-     getAtom,
-     getSubtrees,
-     getSymbol,
-     toSofiaTree,
-     toType,
-     newProof,
-     newLine,
-     toListFromProof,
-     toProofFromList,
-     numLine,
-     numDepth,
-     treeFromLn,
-     ruleFromLn,
+
+     -- * Operators
      (<+>),
      pdo,
      plast,
      phead,
-     preverse) where
+     preverse,
+
+     -- Extracting parameters
+     getAtom,
+     getSubtrees,
+     getSymbol,
+     numLine,
+     numDepth,
+     treeFromLn,
+     ruleFromLn,
+     toSofiaTree,
+     toType,
+
+     -- * Converting types
+     toListFromProof,
+     toProofFromList,
+
+     newSofiaTree,
+     newProof,
+     newLine) where
 
 import ListHelpers
 
@@ -209,6 +216,9 @@ plast :: Proof -> ProofLine
 plast (PListItem x PListEnd) = x
 plast (PListItem x y) = plast y
 
+-- |The infix operator `<+>` concatenates two `Proofs`. In practice it is
+-- only used to append a `Proof` containing a single `ProofLine` to an
+-- existing `Proof`.
 infixr 5 <+>
 PListItem v w <+> PListEnd = PListItem v w
 PListEnd <+> PListItem x y = PListItem x y
@@ -218,10 +228,12 @@ preverse :: Proof -> Proof
 preverse (PListItem x PListEnd) = PListItem x PListEnd
 preverse (PListItem x y) = (preverse y) <+> (PListItem x PListEnd)
 
+-- |Converts a list of `ProofLine`s to a `Proof`.
 toProofFromList :: [ProofLine] -> Proof
 toProofFromList [] = PListEnd
 toProofFromList (pl:pls) = PListItem pl (toProofFromList pls)
 
+-- |Converts a `Proof` to a list of `ProofLine`s.
 toListFromProof :: Proof -> [ProofLine]
 toListFromProof PListEnd = []
 toListFromProof (PListItem pl pls) = pl : (toListFromProof pls)

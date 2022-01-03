@@ -18,7 +18,7 @@
 %\chapter{\texttt{#1}}
 }
 
-\newcommand{\haddockbeginheader}{\hrulefill\vspace{-0.3cm}}
+\newcommand{\haddockbeginheader}{\vspace{-1.0cm}\hrulefill\vspace{-0.3cm}}
 \newcommand{\haddockendheader}{\vspace{-0.5cm}\noindent\hrulefill}
 
 % a little gap before the ``Methods'' header
@@ -43,9 +43,9 @@
 
 \makeatletter
 \newenvironment{haddockdesc}
-               {\list{}{\labelwidth\z@ \itemindent-\leftmargin
+{\vbox\bgroup\list{}{\labelwidth\z@ \itemindent-\leftmargin
                         \let\makelabel\haddocklabel}}
-               {\endlist}
+						{\endlist\egroup}
 \newcommand*\haddocklabel[1]{\hspace\labelsep%\haddockdecltt{#1}
 #1}
 \makeatother
