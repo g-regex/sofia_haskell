@@ -9,17 +9,19 @@ Maintainer  :
 Stability   : experimental
 Portability : POSIX
 
-Data types for the Sofia proof assistant.
+The `SofiaTree` module contains definitions of data types created
+specifically for the Sofia proof assistant.
 -}
 
 module SofiaTree
-    (Proof,
-     ProofLine,
+    (Tree,
      SofiaTree,
+     ProofLine,
      DeductionRule (Assumption, Recall, Selfequate, Restate, Synapsis, Apply,
                     RightSub, LeftSub),
      TypeOfNode (Atom, Statement, Formula, Implication, Equality, Symbol,
                  Error),
+     Proof,
      newSofiaTree,
      getAtom,
      getSubtrees,
@@ -55,13 +57,12 @@ toString (x:xs) = (printable x) ++ (toString xs)
 -- |Nodes in a `SofiaTree` must have a type not equal to `Error`.
 data TypeOfNode = Atom | Statement | Formula | Implication | Equality | Symbol |
                   Error
-                  deriving (Show -- ^`TypeOfNode` derives an instance of `Show`
-                                 --  to display it.
-                           , Eq  -- ^`TypeOfNode` can be compared in an
-                                 --  (non-)equality. 
+                  deriving (Show -- ^Membership of the `Show` class is derived
+                                 --  (for debugging purposes).
+                           , Eq  -- ^Membership of the `Eq` class is derived. 
                            )
--- |A 'Tree' is a Node with two types of values (a list and another value)
--- and a list of sub'Tree's.
+-- |A 'Tree' is a `Node` parametrised with two types of values (a list and
+-- another value) and a list of sub'Tree's.
 data Tree a b = Node [a] b [Tree a b]
               deriving
               (Eq -- ^Two 'Tree's are equal if and only if all their 'Node's
@@ -118,10 +119,10 @@ instance Show (DeductionRule) where
                                 (show d) ++ ")."
     show (Recall a)            = "recalling " ++ (show a) ++ "."
 
--- |A 'Tree' containing a parsed Sofia string. Each 'Node' of such a 'Tree'
--- contains a list of 'Char's (only non-empty, if the 'TypeOfNode' is
--- 'Symbol') equal to the 'String' representation of the 'Node' and the
--- 'TypeOfNode' of the 'Node'.
+-- |A `SofiaTree` is a `Tree` containing a parsed Sofia string. Each 'Node'
+-- of such a 'Tree' contains a list of 'Char's (only non-empty, if the
+-- 'TypeOfNode' is 'Symbol') equal to the 'String' representation of the
+-- 'Node' and the 'TypeOfNode' of the 'Node'.
 type SofiaTree = Tree Char TypeOfNode
 
 class SType a where
@@ -174,9 +175,10 @@ instance Show (ProofLine) where
     show (Line a b c d) = (show c) ++ " /L" ++ (show a) ++ ": " ++ (show d)
 
 -- |A `Proof` is a list of `ProofLine`s. To allow for creating a customised
--- instances of `Show` for `Proof`, an own list type is implemented here.
--- Hence a `Proof` consists of a `PListItem` parametrised by a `ProofLine`
--- (the head of the list) and a `Proof` (the tail of the list)
+-- instance of `Show` for `Proof`, an own list type is implemented here.
+-- To resemble a list, a `Proof` consists of a `PListItem` parametrised by
+-- a `ProofLine` (the head of the list) and a `Proof` (the tail of the
+-- list)
 data Proof = PListItem ProofLine Proof | PListEnd
 
 showLine :: ProofLine -> Bool -> String

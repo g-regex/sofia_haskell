@@ -10,8 +10,8 @@
 %\usepackage{showframe}
 \usepackage{etoolbox}
 \makeatletter
-\patchcmd{\@makechapterhead}{\vspace*{50\p@}}{\vspace*{25pt}}{}{}
-\patchcmd{\@makeschapterhead}{\vspace*{50\p@}}{\vspace*{25pt}}{}{}
+\patchcmd{\@makechapterhead}{\vspace*{50\p@}}{}{}{}
+\patchcmd{\@makeschapterhead}{\vspace*{50\p@}}{}{}{}
 
 \usepackage{pmboxdraw}
 
@@ -46,7 +46,7 @@
 
 
 \chapter{Introduction}
-This purpose of this report is to document the work on the Haskell
+The purpose of this report is to document the work on the Haskell
 implementation of the Sofia proof assistant, which is based on the earlier
 Python implementation.\footnote{See: %
 \url{https://github.com/ZurabJanelidze/sofia}}
@@ -55,7 +55,8 @@ no further introduction to the context of the project is given. Note that the
 given implementation makes use of the \m{Parser} data type, created by
 \textcite{Hutton}, which is available on the web.
 \section{Grammar}
-We agreed on the following formalisation of the grammar of the Sofia language.
+We agreed on the following EBNF\footnote{Extended Backus-Naur Form} of the
+grammar of the Sofia language.
 \begin{figure}[h!]
     {\renewcommand{\arraystretch}{2.0}
     \input{figures/ebnf}}
@@ -63,8 +64,8 @@ We agreed on the following formalisation of the grammar of the Sofia language.
 \end{figure}
 
 Detailed information about the representation of formal languages by means of an
-EBNF\footnote{Extended Backus-Naur Form} can be found online\footnote{%
-See: \url{https://en.wikipedia.org/wiki/EBNF}}. For convenience
+EBNF can be found online\footnote{%
+See: \url{https://en.wikipedia.org/wiki/EBNF}}. For convenience,
 the meaning and/or terminology of the symbols used above is given below.
 \begin{multicols}{2}
 \begin{itemize}
@@ -77,18 +78,10 @@ the meaning and/or terminology of the symbols used above is given below.
 \end{multicols}
 
 \chapter{Significant Data Structures}
-This chapter gives a brief overview of the data types created specifically for
-this project and defined in \texttt{SofiaTree.hs}.
-\\
+\vspace{-1cm}
 \input{haddock/SofiaTree}
 
 \chapter{Function Reference Sofia}
-%\vspace{-0.5cm}
-This chapter introduces the functions which are intended to be used by a user to
-interact with Sofia. At a later stage it might, however, be desirable to create
-an improved user interface for this purpose. All function discussed in this
-chapter are defined in \texttt{Sofia.hs}.
-\\
 \input{haddock/Sofia}
 
 \pagebreak

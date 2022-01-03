@@ -18,8 +18,8 @@
 %\chapter{\texttt{#1}}
 }
 
-\newcommand{\haddockbeginheader}{\hrulefill}
-\newcommand{\haddockendheader}{\noindent\hrulefill}
+\newcommand{\haddockbeginheader}{\hrulefill\vspace{-0.5cm}}
+\newcommand{\haddockendheader}{\vspace{-0.5cm}\noindent\hrulefill}
 
 % a little gap before the ``Methods'' header
 \newcommand{\haddockpremethods}{\vspace{2ex}}
@@ -59,7 +59,7 @@
 \newcommand{\haddockbegindoc}{\hfill\\[1ex]}
 
 % spacing between paragraphs and no \parindent looks better
-\parskip=10pt plus2pt minus2pt
+\parskip=7pt plus2pt minus2pt
 \setlength{\parindent}{0cm}
 
 \usepackage{geometry}
