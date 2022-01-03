@@ -38,15 +38,37 @@ module Sofia (
     patternVar,
     patternEq,
     patternImp,
+    -- $matching
     matchesPattern,
+    isVar,
     -- $matchingexample
+
+    -- *Scope
+    -- $scope
+    atomsFromStmts,
+    treesScope,
+    atomsScope,
+    -- $scopeexample
 
     -- *Variables
     -- $variables
     varsTopLvl,
     varsBound,
     varsDeep,
-    varsFree
+    varsFree,
+
+    -- *Substitution
+    -- $substitution
+    substitute,
+    treeSubstSymbol,
+    treeSubstTree,
+    strAltName,
+    strstrsRename,
+    treeAutoSubstSymbols,
+    treeSubstOneSymbol
+
+    -- *Examples
+    -- $examples
 ) where
 
 --------------------------- Using Graham Hutton's code -------------------------
@@ -79,9 +101,9 @@ main = pure ()
 --
 --      * @l@ (@ProofLine@)
 --
---      * @f@ (filter function)
+--      * @f@ (filter function, i.e.\ @(a -> Bool)@)
 --
---      * @b@ (constant @Bool@ function)
+--      * @b@ (@Bool@)
 --
 --      * @c@ (@Char@)
 --
@@ -197,7 +219,7 @@ patternImp :: Pattern
 patternImp = patternAtomParse "[[x]:[y]]" (2)
 
 -- $matching
--- To simplify the code further, the following `Pattern` matching commands
+-- To simplify the code further, the following `Pattern` matching functions
 -- are introduced.
 
 -- |Returns `True` if the given `SofiaTree` matches the given pattern and
@@ -222,10 +244,14 @@ isVar t =  matchesPattern patternVar t
 -- >>> isVar $ head $ getSubtrees $ treeParse "[a]"
 -- True
 
----------------------- functions to extract variables --------------------------
--- $variables
--- Variables are a fundamental concept in the Sofia language. To handle
--- them efficiently a number of functions are introduced.
+------------------------------------ scope -------------------------------------
+-- $scope
+-- A `ProofLine` `a` (statement) is said to be in the /scope/ of of another
+-- `ProofLine` `b` of the same `Proof`, if and only if the reversed list of all
+-- `ProofLine`s in the `Proof` contains a sublist whose first and last
+-- `ProofLine`s are `b` and `a` respectively and which is such that the
+-- list of the assumption depths of the `ProofLine`s in this sublist are
+-- increasing.
 
 -- |Given a list of statements a list of atoms which make up these
 -- statements is returned.
@@ -237,6 +263,42 @@ atomsFromStmts ts =
     t <- filter (\x -> toType x == Statement) ts,
     t' <- filter (\x -> toType x == Atom) (getSubtrees t)
     ]
+
+-- |Given a list of `ProofLine`s a list of trees which are in the scope of
+-- the last `ProofLine` in the list is returned.
+treesScope ::      [ProofLine]  -- ^The list of `ProofLine`s.
+                -> [SofiaTree]  -- ^The resulting list of `SofiaTree`s.
+treesScope ls =
+    map treeFromLn (reverse (decreasingSublist numDepth (reverse ls)))
+
+-- |Given a list of `ProofLine`s a list of atoms which are in the scope of
+-- the last `ProofLine` in the list is returned.
+atomsScope ::      [ProofLine]  -- ^The list of `ProofLine`s.
+                -> [SofiaTree]  -- ^The resulting list of atoms.
+atomsScope ls = atomsFromStmts (treesScope ls)
+
+-- $scopeexample
+-- To illustrate the behaviour of the functions above, we consider the
+-- following partial `Proof` of Russel's paradox. We use the function
+-- `toListFromProof` to convert from a `Proof` to a list of `ProofLine`s.
+-- 
+-- >>> ex8_6
+-- ╔[X][[x]:[[[x]in[X]]=[[[x]in[x]]:[False[]]]]] /L1: assumption.
+-- ║[[[X]in[X]]=[[[X]in[X]]:[False[]]]] /L2: application of L1.2 (with concretization [(1,1)]).
+-- ║╔[[X]in[X]] /L3: assumption.
+-- ║║[[[X]in[X]]:[False[]]] /L4: right substitution, L2(1) in L3(1).
+-- ║╚[False[]] /L5: application of L4.1 (with concretization []).
+-- ║[[[X]in[X]]:[False[]]] /L6: synapsis (L3-5).
+-- >>> atomsScope $ toListFromProof ex8_6
+-- [[X],[[x]:[[[x]in[X]]=[[[x]in[x]]:[False[]]]]],[[[X]in[X]]=[[[X]in[X]]:[False[]]]],[[[X]in[X]]:[False[]]]]
+--
+-- The resulting list contains all atoms from lines 1, 2 and
+-- 6 respectively.
+
+---------------------- functions to extract variables --------------------------
+-- $variables
+-- Variables are a fundamental concept in the Sofia language. To handle
+-- them efficiently a number of functions are introduced.
 
 -- |Given an atom containing a variable, the symbol (i.e.\ `String`)
 -- representing the variable is returned.
@@ -253,22 +315,10 @@ varsTopLvl ::   SofiaTree   -- ^The statement.
              -> [SofiaTree] -- ^The list of variables.
 varsTopLvl t = [t' | t' <- ts, isVar t'] where ts = atomsFromStmts [t]
 
--- |Given a list of `ProofLine`s a list of trees which are in the scope of
--- the last `ProofLine` in the list is returned.
-treesScope ::      [ProofLine]  -- ^The list of `ProofLine`s.
-                -> [SofiaTree]  -- ^The resulting list of `SofiaTree`s.
-treesScope ls =
-    map treeFromLn (reverse (decreasingSublist numDepth (reverse ls)))
-
--- |Given a list of `ProofLine`s a list of atoms which are in the scope of
--- the last `ProofLine` in the list is returned.
-atomsScope ::      [ProofLine]  -- ^The list of `ProofLine`s.
-                -> [SofiaTree]  -- ^The resulting list of atoms.
-atomsScope ls = atomsFromStmts (treesScope ls)
-
 -- |Given a list of `ProofLine`s, a list a variables which are bound on the
 -- last `ProofLine` in the list is returned.
-varsBound :: [ProofLine] -> [SofiaTree]
+varsBound ::       [ProofLine] -- ^The list of `ProofLine`s
+                -> [SofiaTree] -- ^The resulting list of variables.
 varsBound ls = [v | vs <- map varsTopLvl (treesScope ls), v <- vs]
 
 atomsConditions :: SofiaTree -> [SofiaTree] -- TODO
@@ -369,19 +419,36 @@ varsFree ::     [ProofLine] -- ^A list a `ProofLine`s constituting the proof.
 varsFree p t = without [t' | t' <- varsDeep t] (varsBound p)
 
 ------------------------ functions for renaming symbols ------------------------
+-- $substitution
+-- If a statement is recalled and it contains variables whose name are
+-- already in use, these variables must be renamed. Similarly, if an
+-- implication is applied and the assumption depth is decreased, it might
+-- become necessary to rename variables to not get in conflict with
+-- variables which are deeper nested in the proof structure. Besides these
+-- two cases, the user might want to replace whole statements with other
+-- statements, when making use of equalities. The following functions
+-- enable us to do all these things.
 
--- |Replaces `x` with `y`, if the list `xys` contains
+-- |Replaces `x` with `y`, if the list `xys` of ordered pairs contains
 -- a pair `(x, y)`; otherwise x remains unchanged.
-substitute :: (Eq a) => [(a, a)] -> a -> a
+substitute :: (Eq a) => 
+                 [(a, a)] -- ^The list `xys` of ordered pairs (i.e.\ possible
+                          --  substitutions).
+              -> a        -- ^Object `x` to be substituted.
+              -> a        -- ^The (possibly substituted) object.
 substitute xys x =
     if elem x $ map fst xys
     then head [snd xy | xy <- xys, fst xy == x]
     else x
 
--- |Replaces a SofiaTree `t` with another SofiaTree `t'`, if the list cscss
+-- |Replaces a SofiaTree `t` with another SofiaTree `t'`, if the list `cscss`
 -- contains a pair `(cs, cs')`, where `cs`, `cs'` are the string
 -- representations of the trees `t`, `t'`; otherwise `t` remains unchanged.
-treeSubstSymbol :: [(String, String)] -> SofiaTree -> SofiaTree
+treeSubstSymbol ::      [(String, String)] -- ^The list `cscss` of ordered pairs
+                                           --  (i.e.\ possible substitutions).
+                     -> SofiaTree          -- ^`SofiaTree` `t` to be substituted.
+                     -> SofiaTree          -- ^The resulting (possibly
+                                           --  substituted) `SofiaTree`.
 treeSubstSymbol cscss t =
     newSofiaTree    (substitute cscss (getSymbol t))
                     (toType t)
@@ -390,7 +457,15 @@ treeSubstSymbol cscss t =
 -- |Replaces a SofiaTree `t` (atom) with another SofiaTree `t'`, if the list
 -- `aas` contains a pair `(t, t')` and the number of matched occurrences of
 -- `t` is in the list `is`; otherwise `t` remains unchanged.
-treeSubstTree :: [(SofiaTree, SofiaTree)] -> SofiaTree -> [Int] -> SofiaTree
+treeSubstTree ::    [(SofiaTree, SofiaTree)] -- ^The list `cscss` of ordered pairs
+                                             --  (i.e.\ possible substitutions).
+                 -> SofiaTree                -- ^`SofiaTree` `t` to be
+                                             --  substituted.
+                 -> [Int]                    -- ^List `is` of indices of
+                                             --  occurrences to be
+                                             --  replaced.
+                 -> SofiaTree                -- ^The resulting (possibly
+                                             --  substituted) `SofiaTree`.
 treeSubstTree aas t is = 
     if t == t'
     then newSofiaTree (getSymbol t)
@@ -445,8 +520,18 @@ strstrsRename ts ts' = [strstrR t | t <- ts']
         cs = strFromVar t
 
 -- |Replaces all variable names in a given expression by the next available
--- alternative name.
-treeAutoSubstSymbols :: [ProofLine] -> SofiaTree -> Bool -> SofiaTree
+-- alternative name in the context of a given proof.
+treeAutoSubstSymbols ::    [ProofLine] -- ^A list a `ProofLine`s constituting
+                                       --  the proof.
+                        -> SofiaTree   -- ^The expression in which variables
+                                       --  shoujld be renamed.
+                        -> Bool        -- ^Should be set to `True`, if bound
+                                       --  variable names may be used;
+                                       --  should be set to `False`, if
+                                       --  bound variable names must be
+                                       --  replaced.
+                        -> SofiaTree   -- ^The resulting expression with renamed
+                                       --  variables.
 treeAutoSubstSymbols ls t b =
      (treeSubstSymbol cscs2 (treeSubstSymbol cscs1 t)) where
         varsMentioned = [t | ts <- map varsDeep $ map treeFromLn ls, t <- ts] 
@@ -455,8 +540,18 @@ treeAutoSubstSymbols ls t b =
         vs2           = if b then [] else (varsDeep t)
         cscs2         = if b then [] else strstrsRename (varsBound ls) vs2
 
--- |Renames one variable in an expression to a provided new name.
-treeSubstOneSymbol :: [ProofLine] -> String -> String -> SofiaTree -> SofiaTree
+-- |Renames one variable in an expression to a provided new name or the
+-- next available alternative in the context of a given proof.
+treeSubstOneSymbol ::   [ProofLine] -- ^A list a `ProofLine`s constituting
+                                    --  the proof.
+                     -> String      -- ^`String` representation of the variable
+                                    --  to be renamed (e.g.\ "x")
+                     -> String      -- ^`String representation of the suggested
+                                    --  new name for the variable (e.g.\
+                                    --  "y")
+                     -> SofiaTree   -- ^The expression in which the variable
+                                    --  should be renamed.
+                     -> SofiaTree   -- ^The resulting expression.
 treeSubstOneSymbol ls cs cs' t =
     treeSubstSymbol cscss t where
         cscss = [(cs, strAltName cs' (map strFromVar (varsBound ls)))]
@@ -774,7 +869,6 @@ leftsub sub_line tgt_line is sub_col tgt_col p = p <+> pl
 -- Can variables be replaced by statements?
 --
 ----------------------------------- Examples  ---------------------------------- 
---
 -- "Reflexivity of Equality"
 ex1_1 = assume "[X]" newProof
 ex1_2 = selfequate (1,1) ex1_1
@@ -876,3 +970,24 @@ ex10_4 = apply 3 [(1,1)] 1 ex10_3
 ex10_5 = leftsub 4 1 [1..] 2 2 ex10_4
 ex10_6 = leftsub 4 2 [1..] 2 1 ex10_5
 ex10_7 = restate [(5,1),(6,1)] "x" ex10_6
+
+-- $examples
+-- At the end of the source of the `Sofia` some of the examples from the
+-- Python version were converted to this Haskell version. For completeness'
+-- sake the output of a selection of these examples is given here.
+--
+-- >>> ex1_3
+-- ╔[X] /L1: assumption.
+-- ╚[[X]=[X]] /L2: self-equate from L1(1).
+-- [[X]:[[X]=[X]]] /L3: synapsis (L1-2).
+--
+-- >>> ex3_4
+-- ╔[X][Y][[X]=[Y]] /L1: assumption.
+-- ║[[X]=[X]] /L2: self-equate from L1(1).
+-- ╚[[Y]=[X]] /L3: right substitution, L1(3) in L2(1).
+-- [[X][Y][[X]=[Y]]:[[Y]=[X]]] /L4: synapsis (L1-3).
+--
+-- >>> ex4_3
+-- ╔[X][Y][Z][[X]=[Y]][[Y]=[Z]] /L1: assumption.
+-- ╚[[X]=[Z]] /L2: right substitution, L1(5) in L1(4).
+-- [[X][Y][Z][[X]=[Y]][[Y]=[Z]]:[[X]=[Z]]] /L3: synapsis (L1-2).

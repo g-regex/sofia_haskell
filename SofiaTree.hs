@@ -94,11 +94,11 @@ data DeductionRule = Assumption | Selfequate (Int, Int) | Restate [(Int, Int)]
                      | RightSub Int Int [Int] Int Int
                      | LeftSub  Int Int [Int] Int Int
                      | Recall String
-                     deriving (Eq -- ^`Deduction` rules are a derived instance
+                     deriving (Eq -- ^`DeductionRule` is a derived instance
                                   --  of the `Eq` class.
                               )
 
--- |`DeductionRule`s are displayed in the same way as in the Python
+-- |`DeductionRule` is displayed in a similar way as in the Python
 -- implementation.
 instance Show (DeductionRule) where
     show (Assumption)          = "assumption."

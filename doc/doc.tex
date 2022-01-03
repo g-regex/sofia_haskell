@@ -3,11 +3,21 @@
 \usepackage{titling}
 \usepackage{standalone}
 
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[scaled=0.85]{DejaVuSansMono}
+
 %\usepackage{showframe}
 \usepackage{etoolbox}
 \makeatletter
 \patchcmd{\@makechapterhead}{\vspace*{50\p@}}{\vspace*{25pt}}{}{}
 \patchcmd{\@makeschapterhead}{\vspace*{50\p@}}{\vspace*{25pt}}{}{}
+
+\usepackage{pmboxdraw}
+
+\DeclareUnicodeCharacter{255A}{\pmboxdrawuni{255A}}
+\DeclareUnicodeCharacter{2554}{\pmboxdrawuni{2554}}
+\DeclareUnicodeCharacter{2551}{\pmboxdrawuni{2551}}
 
 \pretitle{\begin{center}\Huge\bfseries}
 \posttitle{\par\end{center}}
