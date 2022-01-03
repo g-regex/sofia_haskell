@@ -7,7 +7,7 @@
 \usepackage[newfloat]{minted}
 
 % make hyperlinks in the PDF, and add an expandabale index
-\usepackage[pdftex,bookmarks=true]{hyperref}
+\usepackage[pdftex,bookmarks=true,hidelinks]{hyperref}
 
 \newenvironment{haddocktitle}
   {\begin{center}\bgroup\large\bfseries}
@@ -18,7 +18,7 @@
 %\chapter{\texttt{#1}}
 }
 
-\newcommand{\haddockbeginheader}{\hrulefill\vspace{-0.5cm}}
+\newcommand{\haddockbeginheader}{\hrulefill\vspace{-0.3cm}}
 \newcommand{\haddockendheader}{\vspace{-0.5cm}\noindent\hrulefill}
 
 % a little gap before the ``Methods'' header
@@ -38,7 +38,7 @@
 \newcommand{\haddockbeginconstrs}{\begin{tabulary}{\linewidth}{@{}llJ@{}}}
 \newcommand{\haddockbeginargs}{\begin{tabulary}{\linewidth}{@{}llJ@{}}}
 
-\newcommand{\haddocktt}[1]{{\small \mintinline{haskell}{#1}}}
+\newcommand{\haddocktt}[1]{{\mintinline{haskell}{#1}}}
 \newcommand{\haddockdecltt}[1]{{\small\bfseries\texttt{#1}}}
 
 \makeatletter
@@ -59,7 +59,7 @@
 \newcommand{\haddockbegindoc}{\hfill\\[1ex]}
 
 % spacing between paragraphs and no \parindent looks better
-\parskip=7pt plus2pt minus2pt
+\parskip=5pt plus2pt minus2pt
 \setlength{\parindent}{0cm}
 
 \usepackage{geometry}

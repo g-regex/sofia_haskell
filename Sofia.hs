@@ -292,7 +292,8 @@ atomsScope ls = atomsFromStmts (treesScope ls)
 -- ║╚[False[]] /L5: application of L4.1 (with concretization []).
 -- ║[[[X]in[X]]:[False[]]] /L6: synapsis (L3-5).
 -- >>> atomsScope $ toListFromProof ex8_6
--- [[X],[[x]:[[[x]in[X]]=[[[x]in[x]]:[False[]]]]],[[[X]in[X]]=[[[X]in[X]]:[False[]]]],[[[X]in[X]]:[False[]]]]
+-- [[X],[[x]:[[[x]in[X]]=[[[x]in[x]]:[False[]]]]],[[[X]in[X]]=[[[X]in[X]]:[False[]]]],
+-- [[[X]in[X]]:[False[]]]]
 --
 -- The resulting list contains all atoms from lines 1, 2 and
 -- 6 respectively.
@@ -833,10 +834,10 @@ rightsub sub_line tgt_line is sub_col tgt_col p = p <+> l
     subst = head (atomsFromCoords p' [(sub_line, sub_col)])
     target = head (atomsFromCoords p' [(tgt_line, tgt_col)])
 
--- |Left substitution: The left hand side of the equality at a given
+-- |Left substitution: The leftt hand side of the equality at a given
 -- position replaces certain occurences (whose indicies, numbered in
--- a preorder traversal, are given in a list) of the right hand side of
--- the equality in a given statement.
+-- a preorder traversal, are given in a list) of the right hand side in
+-- a given statement.
 leftsub ::      Int         -- ^The line number of the equality.
              -> Int         -- ^The line number of the statement.
              -> [Int]       -- ^The list of indices
@@ -994,25 +995,6 @@ ex10_7 = restate [(5,1),(6,1)] "x" ex10_6
 -- ╔[X][Y][Z][[X]=[Y]][[Y]=[Z]] /L1: assumption.
 -- ╚[[X]=[Z]] /L2: right substitution, L1(5) in L1(4).
 -- [[X][Y][Z][[X]=[Y]][[Y]=[Z]]:[[X]=[Z]]] /L3: synapsis (L1-2).
---
--- >>> ex5_5
--- ╔[[Mark[]]ishuman][[X][[X]ishuman]:[[X]canfeel]] /L1: assumption.
--- ║╔[Mark[]] /L2: assumption.
--- ║╚[[Mark[]]canfeel] /L3: application of L1.2 (with concretization [(2,1)]).
--- ╚[[Mark[]]:[[Mark[]]canfeel]] /L4: synapsis (L2-3).
--- [[[Mark[]]ishuman][[X][[X]ishuman]:[[X]canfeel]]:[[Mark[]]:[[Mark[]]canfeel]]] /L5: synapsis (L1-4).
---
--- >>> ex9_10
--- ╔[x][[x]num] /L1: assumption.
--- ║[[x'][[x']num]:[[[0[]]+[x']]=[x']]] /L2: recalling "Identity".
--- ║[[x'][y][[x']num][[y]num]:[[[x']+[y]]=[[y]+[x']]]] /L3: recalling "Commutativity".
--- ║[[[0[]]+[x]]=[x]] /L4: application of L2.1 (with concretization [(1,1)]).
--- ║[0[]][[0[]]num][1[]][[1[]]num] /L5: recalling "Number construction".
--- ║[[[x]+[0[]]]=[[0[]]+[x]]] /L6: application of L3.1 (with concretization [(1,1),(5,1)]).
--- ║[[x'][[x']num]:[[[0[]]+[x']]=[x']]] /L7: recalling "Identity".
--- ║[[[0[]]+[x]]=[x]] /L8: application of L7.1 (with concretization [(1,1)]).
--- ╚[[[x]+[0[]]]=[x]] /L9: right substitution, L8(1) in L6(1).
--- [[x][[x]num]:[[[x]+[0[]]]=[x]]] /L10: synapsis (L1-9).
 --
 -- >>> ex10_7
 -- [0[]][[0[]]num][1[]][[1[]]num] /L1: recalling "Number construction".
