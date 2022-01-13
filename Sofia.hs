@@ -324,12 +324,33 @@ treesSubstPH (t:ts') (ts:tss) =
         rest_tree  = fst rest
         rest_i     = snd rest
 
-treeBuilderInduction :: String -> String -> String -> SofiaTree
-treeBuilderInduction cs1 cs2 cs3 =
-    treeBuilder ("[ [[]] [[]] [[ [[]] ][[ [[]] ]nat] [[]] : [[]] ]:" ++
-                 "[[ [[]] ][[ [[]] ]nat]: [[]] ]]")
-                [cs2, cs1, cs3, cs3, cs1, cs1, cs3, cs3, cs1]
+axiomZero :: Postulate
+axiomZero =
+    ((treeParse "[0[]][[0[]]nat][[n][[n]nat][[0[]]=[1+[n]]]:[![]]]"),
+     "Arithmetic: Zero")
 
+axiomSucc :: Postulate
+axiomSucc =
+    ((treeParse ("[[n][[n]nat]:[1+[n]][[1+[n]]nat][[m][[m]nat]" ++
+                 "[[1+[n]]=[1+[m]]]:[[n]=[m]]]]")),
+     "Arithmetic: Successor")
+
+axiomInduction :: String -> String -> String -> Postulate
+axiomInduction cs1 cs2 cs3 =
+    ((treeBuilder ("[ [[]] [[]] [[ [[]] ][[ [[]] ]nat] [[]] : [[]] ]:" ++
+                   "[[ [[]] ][[ [[]] ]nat]: [[]] ]]")
+                  [cs2, cs1, cs3, cs3, cs1, cs1, cs3, cs3, cs1]),
+     "Arithmetic: Induction on " ++ cs3 ++ " in " ++ cs2 ++ cs3)
+
+axiomFalseUniv :: String -> String -> Postulate
+axiomFalseUniv cs1 cs2 =
+    ((treeBuilder "[ [[]] [![]]: [[]] ]" [cs2, cs1]),
+     "Boolean: False Universality")
+
+axiomDoubleNeg :: String -> String -> Postulate
+axiomDoubleNeg cs1 cs2 =
+    ((treeBuilder "[ [[]] [[ [[]] :[![]]]:[![]]]: [[]] ]" [cs2, cs1, cs1]),
+     "Boolean: Double Negation")
 
 -- $matchingexample
 -- We can now check whether a given `SofiaTree` is for example a variable.
@@ -788,12 +809,14 @@ treeDeduceRS subst target indices =
         lhs = head $ getSubtrees $ stmtFromEQ leftHS subst
         rhs = head $ getSubtrees $ stmtFromEQ rightHS subst
 
+type Postulate = (SofiaTree, String)
+
 -- |Takes a `String` representation of a Sofia statement and `String`
 -- containing a name for the statement and converts it to an ordered pair
 -- containing the corresponding `SofiaTree` and the name for later use as
 -- an axiom or theorem in a `Proof`.
 postulate ::     String                 -- ^The `String` representation of the
-                                        --  axiom or theorem..
+                                        --  axiom or theorem.
               -> String                 -- ^The name of the axiom or theorem.
               -> (SofiaTree, String)    -- ^The resulting `SofiaTree`, paired
                                         --  with the name of the axiom or
