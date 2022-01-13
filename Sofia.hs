@@ -237,6 +237,7 @@ matchesPattern (i, yis) t = patternFromTree t i == (i, yis)
 isVar :: SofiaTree -> Bool
 isVar t =  matchesPattern patternVar t
 
+---------------------- EXPERIMENTAL/NOT NEEDED ---------------------------------
 getSubtree :: [(a, b, Int)] -> [(a, b, Int)]
 getSubtree ((a, b, i):xs) = getSubtreeHelper [(a, b, i)] xs i
 
@@ -259,8 +260,19 @@ treesFromSchema ((cs, y, i):xs) =
         sub  = tail $ getSubtree ((cs, y, i):xs)
         rest = drop (length sub) xs
 
-patternPH :: Pattern
-patternPH = patternAtomParse "[[]]" (-1)
+preorderPartial :: (SofiaTree -> b) ->
+                   (SofiaTree -> b) ->
+                   (SofiaTree -> Bool) ->
+                   SofiaTree ->
+                   [b]
+preorderPartial xf xf' f t =
+    if f t
+    then [xf' t]
+    else
+        if getSubtrees t == []
+        then [xf t]
+        else [xf t] ++ [x | t' <- (getSubtrees t),
+                            x <- preorderPartial xf xf' f t']
 
 type Schema = [(String, TypeOfNode, Int)]
 
@@ -275,25 +287,6 @@ schemaFromTree t =
                     (\x -> ("", Placeholder, 0))
                     (\x -> matchesPattern patternPH x) t
 
-schemaReplace :: Schema -> [SofiaTree] -> Schema
-schemaReplace ms []     = ms
-schemaReplace [] ts     = []
-schemaReplace ms (t:ts) = start ++ schemaFromTree t ++ (schemaReplace end ts)
-   where
-    start = takeWhile (\x -> typeOfTuple x /= Placeholder) ms
-    end   = drop (length start + 1) ms
-
-schemaStringReplace :: Schema -> [String] -> Schema
-schemaStringReplace ms css =
-    schemaReplace ms [t | cs <- css, t <- getSubtrees $ treeParse cs]
-
---treeSubstStringSchema :: Schema -> [String] -> Schema
---treeSubstStringSchema ms css =
---    treeSubstSchema ms [t | cs <- css, t <- getSubtrees $ treeParse cs]
-
-atomssParse :: [String] -> [[SofiaTree]]
-atomssParse css = [getSubtrees $ treeParse cs | cs <- css]
-
 schemaParse :: String -> Schema
 schemaParse cs = schemaFromTree $ treeParse cs
 
@@ -302,8 +295,8 @@ treeSubstSchema :: Schema ->
                    SofiaTree
 treeSubstSchema ms tss = head $ fst $ treesSubstPH (treesFromSchema ms) tss
 
-treeBuilder :: String -> [String] -> SofiaTree
-treeBuilder cs css = treeSubstSchema (schemaParse cs) (atomssParse css)
+treeBuilder' :: String -> [String] -> SofiaTree
+treeBuilder' cs css = treeSubstSchema (schemaParse cs) (atomssParse css)
 
 treesSubstPH :: [SofiaTree] ->
                 [[SofiaTree]] ->
@@ -323,6 +316,41 @@ treesSubstPH (t:ts') (ts:tss) =
         rest       = treesSubstPH ts' (snd recur)
         rest_tree  = fst rest
         rest_i     = snd rest
+
+--------------------------------------------------------------------------------
+
+patternPH :: Pattern
+patternPH = patternAtomParse "[[]]" (-1)
+
+treeSubst :: SofiaTree ->
+             [[SofiaTree]] ->
+             SofiaTree
+treeSubst t tss = head $ fst $ treesSubst [t] tss
+
+treesSubst  :: [SofiaTree] ->
+                [[SofiaTree]] ->
+                ([SofiaTree], [[SofiaTree]])
+treesSubst [] tss = ([], tss)
+treesSubst (t:ts') [] = ((t:ts'), [])
+treesSubst (t:ts') (ts:tss) =
+    if matchesPattern patternPH t
+    then (ts ++ rest_tree, rest_i)
+    else ((newSofiaTree (getSymbol t)
+                        (toType t)
+                        (subtree)) : rest_tree, rest_i)
+       where
+        incr       = if matchesPattern patternPH t then tss else (ts:tss)
+        recur      = treesSubst (getSubtrees t) incr
+        subtree    = fst recur
+        rest       = treesSubst ts' (snd recur)
+        rest_tree  = fst rest
+        rest_i     = snd rest
+
+atomssParse :: [String] -> [[SofiaTree]]
+atomssParse css = [getSubtrees $ treeParse cs | cs <- css]
+
+treeBuilder :: String -> [String] -> SofiaTree
+treeBuilder cs css = treeSubst (treeParse cs) (atomssParse css)
 
 axiomZero :: Postulate
 axiomZero =
@@ -494,20 +522,6 @@ preorderFilter xf f t =
         filtered = if f t
                then [xf t]
                else []
-
-preorderPartial :: (SofiaTree -> b) ->
-                   (SofiaTree -> b) ->
-                   (SofiaTree -> Bool) ->
-                   SofiaTree ->
-                   [b]
-preorderPartial xf xf' f t =
-    if f t
-    then [xf' t]
-    else
-        if getSubtrees t == []
-        then [xf t]
-        else [xf t] ++ [x | t' <- (getSubtrees t),
-                            x <- preorderPartial xf xf' f t']
 
 -- |Returns a list resulting from a preorder traversal of a tree t up to
 -- a depth i, filtered by a function f. To each matched internal node a function
