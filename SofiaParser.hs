@@ -45,9 +45,13 @@ sSymbol =
 
 sFormulator :: Parser SofiaTree
 sFormulator = 
-    do x <- specialChar ':'
+    do many $ specialChar ' '
+       specialChar ':'
+       many $ specialChar ' '
        return (newSofiaTree [] Implication [])
-      <|> do x <- specialChar '='
+      <|> do many $ specialChar ' '
+             specialChar '='
+             many $ specialChar ' '
              return (newSofiaTree [] Equality [])
             <|> do x <- sSymbol
                    return (newSofiaTree x Symbol [])

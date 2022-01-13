@@ -237,6 +237,100 @@ matchesPattern (i, yis) t = patternFromTree t i == (i, yis)
 isVar :: SofiaTree -> Bool
 isVar t =  matchesPattern patternVar t
 
+getSubtree :: [(a, b, Int)] -> [(a, b, Int)]
+getSubtree ((a, b, i):xs) = getSubtreeHelper [(a, b, i)] xs i
+
+getSubtreeHelper :: [(a, b, Int)] -> [(a, b, Int)] -> Int -> [(a, b, Int)]
+getSubtreeHelper xs _ 0 = xs 
+getSubtreeHelper xs [] _ = [] 
+getSubtreeHelper xs ((a, b, i):ys) i' =
+    getSubtreeHelper (xs ++ [(a, b, i)]) ys (i' + i - 1)
+
+treeFromSchema :: Schema -> SofiaTree
+treeFromSchema x = head $ treesFromSchema x
+
+treesFromSchema :: Schema -> [SofiaTree]
+treesFromSchema [] = []
+treesFromSchema ((cs, y, 0):[]) = [newSofiaTree cs y []]
+treesFromSchema ((cs, y, 0):xs) = [newSofiaTree cs y []] ++ (treesFromSchema xs)
+treesFromSchema ((cs, y, i):xs) =
+    [newSofiaTree cs y (treesFromSchema sub)] ++ (treesFromSchema rest)
+       where
+        sub  = tail $ getSubtree ((cs, y, i):xs)
+        rest = drop (length sub) xs
+
+patternPH :: Pattern
+patternPH = patternAtomParse "[[]]" (-1)
+
+type Schema = [(String, TypeOfNode, Int)]
+
+typeOfTuple :: (String, TypeOfNode, Int) -> TypeOfNode
+typeOfTuple (_, y, _) = y
+
+-- Creates a `Schema` from a `SofiaTree`.
+schemaFromTree ::     SofiaTree    -- ^The `SofiaTree`.
+                    -> Schema      -- ^The resulting `Schema`.
+schemaFromTree t =
+    preorderPartial (\x -> (getSymbol x, toType x, length $ getSubtrees x))
+                    (\x -> ("", Placeholder, 0))
+                    (\x -> matchesPattern patternPH x) t
+
+schemaReplace :: Schema -> [SofiaTree] -> Schema
+schemaReplace ms []     = ms
+schemaReplace [] ts     = []
+schemaReplace ms (t:ts) = start ++ schemaFromTree t ++ (schemaReplace end ts)
+   where
+    start = takeWhile (\x -> typeOfTuple x /= Placeholder) ms
+    end   = drop (length start + 1) ms
+
+schemaStringReplace :: Schema -> [String] -> Schema
+schemaStringReplace ms css =
+    schemaReplace ms [t | cs <- css, t <- getSubtrees $ treeParse cs]
+
+--treeSubstStringSchema :: Schema -> [String] -> Schema
+--treeSubstStringSchema ms css =
+--    treeSubstSchema ms [t | cs <- css, t <- getSubtrees $ treeParse cs]
+
+atomssParse :: [String] -> [[SofiaTree]]
+atomssParse css = [getSubtrees $ treeParse cs | cs <- css]
+
+schemaParse :: String -> Schema
+schemaParse cs = schemaFromTree $ treeParse cs
+
+treeSubstSchema :: Schema ->
+                   [[SofiaTree]] ->
+                   SofiaTree
+treeSubstSchema ms tss = head $ fst $ treesSubstPH (treesFromSchema ms) tss
+
+treeBuilder :: String -> [String] -> SofiaTree
+treeBuilder cs css = treeSubstSchema (schemaParse cs) (atomssParse css)
+
+treesSubstPH :: [SofiaTree] ->
+                [[SofiaTree]] ->
+                ([SofiaTree], [[SofiaTree]])
+treesSubstPH [] tss = ([], tss)
+treesSubstPH (t:ts') [] = ((t:ts'), [])
+treesSubstPH (t:ts') (ts:tss) =
+    if toType t /= Placeholder
+    then ((newSofiaTree (getSymbol t)
+                        (toType t)
+                        (subtree)) : rest_tree, rest_i)
+    else (ts ++ rest_tree, rest_i)
+       where
+        incr       = if toType t /= Placeholder then (ts:tss) else tss
+        recur      = treesSubstPH (getSubtrees t) incr
+        subtree    = fst recur
+        rest       = treesSubstPH ts' (snd recur)
+        rest_tree  = fst rest
+        rest_i     = snd rest
+
+treeBuilderInduction :: String -> String -> String -> SofiaTree
+treeBuilderInduction cs1 cs2 cs3 =
+    treeBuilder ("[ [[]] [[]] [[ [[]] ][[ [[]] ]nat] [[]] : [[]] ]:" ++
+                 "[[ [[]] ][[ [[]] ]nat]: [[]] ]]")
+                [cs2, cs1, cs3, cs3, cs1, cs1, cs3, cs3, cs1]
+
+
 -- $matchingexample
 -- We can now check whether a given `SofiaTree` is for example a variable.
 -- Since our template `Pattern` was created with `patternAtomParse`, we
@@ -379,6 +473,20 @@ preorderFilter xf f t =
         filtered = if f t
                then [xf t]
                else []
+
+preorderPartial :: (SofiaTree -> b) ->
+                   (SofiaTree -> b) ->
+                   (SofiaTree -> Bool) ->
+                   SofiaTree ->
+                   [b]
+preorderPartial xf xf' f t =
+    if f t
+    then [xf' t]
+    else
+        if getSubtrees t == []
+        then [xf t]
+        else [xf t] ++ [x | t' <- (getSubtrees t),
+                            x <- preorderPartial xf xf' f t']
 
 -- |Returns a list resulting from a preorder traversal of a tree t up to
 -- a depth i, filtered by a function f. To each matched internal node a function
@@ -608,7 +716,7 @@ atomsFromCoords p xs =
             t <- [treeFromLn $ getIndex line p]
             ]
 
-------------------------- Functions generating SofiaTrees  ------------------------- 
+------------------------- Functions generating SofiaTrees  ---------------------
 
 treeEQ :: SofiaTree
 treeEQ = (newSofiaTree [] Equality [])

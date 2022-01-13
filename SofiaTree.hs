@@ -15,7 +15,7 @@ specifically for the Sofia proof assistant.
 
 module SofiaTree
     (TypeOfNode (Atom, Statement, Formula, Implication, Equality, Symbol,
-                 Error),
+                 Placeholder, Error),
      Tree,
      SofiaTree,
      DeductionRule (Assumption, Recall, Selfequate, Restate, Synapsis, Apply,
@@ -63,7 +63,7 @@ toString (x:xs) = (printable x) ++ (toString xs)
 
 -- |Nodes in a `SofiaTree` must have a type not equal to `Error`.
 data TypeOfNode = Atom | Statement | Formula | Implication | Equality | Symbol |
-                  Error
+                  Placeholder | Error
                   deriving (Show -- ^Membership of the `Show` class is derived
                                  --  (for debugging purposes).
                            , Eq  -- ^Membership of the `Eq` class is derived. 
@@ -87,6 +87,7 @@ instance (Printable a, Show a, SType b, Show b) => Show (Tree a b) where
     show (Node a b c) =
         case toType b of
              Error          -> "Error" 
+             Placeholder    -> "..." 
              Atom           -> "[" ++ showtree c ++ "]"
              Implication    -> ":"
              Equality       -> "="
