@@ -12,7 +12,7 @@ Portability : POSIX
 The parser for commands of the Sofia proof assistant.
 -}
 
-module SofiaCommandParser where --(commandParse) where
+module SofiaCommandParser (commandParse, evalList, validateCmd) where
 
 import Parsing
 import Sofia
@@ -137,8 +137,11 @@ sLeftSub  = do sWord "leftsub"
                return (leftsub x y pl x' y')
 
 sCommand :: Parser (Proof -> Proof)
-sCommand = sAssume <|> sRestate <|> sSynapsis <|> sApply <|> sRightSub <|>
-           sLeftSub
+sCommand = do many (specialChar ' ')
+              x <- (sAssume <|> sRestate <|> sSynapsis <|> sApply <|> sRightSub
+                   <|> sLeftSub)
+              many (specialChar ' ')
+              return x
 
 commandParse :: String -> (Proof -> Proof)
 commandParse x = fst $ head $ parse sCommand x
@@ -152,3 +155,9 @@ evalPList p (pp:pps) = evalPList (pp p) pps
 
 evalList :: [String] -> Proof
 evalList css = evalPList newProof (listParse css)
+
+validateCmd :: String -> Bool
+validateCmd cs = and [length (parsed) == 1,
+                      (length $ snd $ head $ parsed) == 0]
+                    where
+                     parsed = parse sCommand cs

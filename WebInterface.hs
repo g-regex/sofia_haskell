@@ -12,7 +12,6 @@ data App = App
 
 mkYesod "App" [parseRoutes|
 /            HomeR       GET POST
-/set-message SetMessageR POST
 |]
 
 instance Yesod App where
@@ -33,52 +32,46 @@ instance RenderMessage App FormMessage where
     renderMessage _ _ = defaultFormMessage
 
 getHomeR :: Handler Html
-getHomeR = do
-    mmsg <- getMessage
-    defaultLayout
-        [whamlet|
-            $maybe msg <- mmsg
-                <p>Your message was: #{msg}
-            <form method=post action=@{HomeR}>
-                My message is: #
-                <input type=hidden name=history>
-                <input type=text name=message>
-                <button>Go
-        |]
+getHomeR = postHomeR
 
-genProof :: Text -> Text -> [Text]
-genProof h msg = Prelude.map pack $
+genProof :: String -> [String] -> [Text]
+genProof h ms = Prelude.map pack $
                  Data.List.Split.splitOn "\n" $ show $ evalList $
-                 (Data.List.Split.splitOn ";" (unpack h)) ++ [unpack msg]
+                 (Data.List.Split.splitOn ";" h) ++ ms
 
 postHomeR :: Handler Html
 postHomeR = do
     hst <- runInputPost $ iopt textField "history"
-    msg <- runInputPost $ ireq textField "message"
+    msg <- runInputPost $ iopt textField "message"
     defaultLayout
         [whamlet|
-            <p>Your message was:<br>
-                $maybe h <- hst
-                    $forall line <- genProof h msg
-                        #{line}<br>
-                $nothing
-                    #{pack (show $ evalList [unpack msg])}<br>
             <form method=post action=@{HomeR}>
-                My message is:<br>
-                $maybe h <- hst
-                    <input type=text name=history value="#{h};#{msg}">
+                $maybe m <- msg
+                    $if validateCmd $ unpack m
+                        $maybe h <- hst
+                                $forall line <- genProof (unpack h) [unpack m]
+                                    #{line}<br>
+                                <input type=hidden name=history value="#{h};#{m}">
+                        $nothing
+                            #{pack (show $ evalList [unpack m])}<br>
+                            <input type=hidden name=history value="#{m}">
+                    $else
+                        $maybe h <- hst
+                            $forall line <- genProof (unpack h) []
+                                #{line}<br>
+                            <input type=hidden name=history value="#{h}">
+                        <b>Error: Invalid command.</b>
                 $nothing
-                    <input type=text name=history value="#{msg}">
-                <br>
+                    $maybe h <- hst
+                        $forall line <- genProof (unpack h) []
+                            #{line}<br>
+                        <input type=hidden name=history value="#{h}">
+                    $nothing
+                        Hello! You can start creating a proof.
+                <br><br>
                 <input type=text name=message>
                 <button>Go
         |]
-
-postSetMessageR :: Handler ()
-postSetMessageR = do
-    msg <- runInputPost $ ireq textField "message"
-    setMessage $ toHtml msg
-    redirect HomeR
 
 main :: IO ()
 main = warp 3000 App
