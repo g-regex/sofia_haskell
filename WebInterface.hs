@@ -6,6 +6,7 @@
 import Yesod
 import Data.Text
 import Data.List.Split
+import Text.Lucius (CssUrl, luciusFile, luciusFileReload, renderCss)
 import SofiaCommandParser
 
 data App = App
@@ -18,70 +19,7 @@ instance Yesod App where
     defaultLayout widget = do
         pc <- widgetToPageContent $ do
             widget
-            toWidget [lucius|
-                     body {
-                          font-family: verdana;
-                          background: #181a1b;
-                          color: white;
-                          font-size: 12pt;
-                     }
-                     #mainBox {
-                       border-radius: 25px;
-                       padding: 20px;
-                       margin: 50px;
-                     }
-
-                     .column {
-                         float: left;
-                         width: 50%;
-                         flex: 1;
-                     }
-
-                     .row {
-                         margin: 10px;
-                         display: flex;
-                     }
-
-                     #proof {
-                         border-top-left-radius: 25px;
-                         border-bottom-left-radius: 25px;
-                         background: #3e4446;
-                     }
-
-                     #info {
-                         border-top-right-radius: 25px;
-                         border-bottom-right-radius: 25px;
-                         background: #35393b;
-                     }
-
-                     .inside {
-                         margin: 20px;
-                     }
-
-                     #cmd {
-                       border-radius: 25px;
-                       background: #3e4446;
-                       padding: 20px;
-                       margin: 10px;
-                     }
-
-                     #prompt {
-                       width: 100%;
-                     }
-
-                     input[type=text] {
-                          border: none;
-                          background: #3e4446;
-                          border-bottom: 2px solid darkgrey;
-                          color: white;
-                          font-size: 12pt;
-                     }
-
-                     input[type=text]:focus {
-                          border-bottom: 2px solid grey;
-                          outline: none;
-                     }
-                    |]
+            toWidget $(luciusFile "style.lucius")
         withUrlRenderer
             [hamlet|
                 $doctype 5
@@ -104,6 +42,43 @@ genProof :: String -> [String] -> [Text]
 genProof h ms = Prelude.map pack $
                  Data.List.Split.splitOn "\n" $ show $ evalList $
                  (Data.List.Split.splitOn ";" h) ++ ms
+
+helpText =
+    [hamlet|
+        Available commands:
+         <ul>
+          <li><code>assume <var>String</var></code><br>
+            (e.g. <code>assume "[x]"</code>)<br>
+            Parameters:
+            <ul>
+                <li>A Sofia expression.
+          <li><code>restate <var>[(Int, Int)] String</var></code><br>
+            (e.g. <code>restate [(1,1), (1,2)] "x"</code>)<br>
+            Parameters:
+            <ul>
+                <li>List of positions (line, column) of atoms.
+                <li>New name of variable to be renamed.
+          <li><code>synapsis</code>
+          <li><code>apply <var>Int [(Int, Int)] Int</var></code><br>
+            (e.g. <code>apply 2 [(1,1), (1,2)] 3</code>)<br>
+            Parameters:
+            <ul>
+                <li>The line of the implication to be applied.
+                <li>List of positions (line, column) of atoms for replacements.
+                <li>The column of the implication to be applied.
+          <li><code>rightsub <var>Int Int [Int] Int Int</var></code><br>
+            (e.g. <code>rightsub 2 3 [1, 2] 1 4</code>)<br>
+            Parameters:
+            <ul>
+                <li>The line of the equality.
+                <li>The line of the statement.
+                <li>A list of indices of the atoms which re to be substituted.
+                <li>The column of the equality.
+                <li>The column of the statement.
+          <li><code>leftsub <var>Int Int [Int] Int Int</var></code><br>
+            (e.g. <code>leftsub 2 3 [1, 2] 1 4</code>)<br>
+            The parameters are the same as for <code>rightsub</code>.
+    |]
 
 postHomeR :: Handler Html
 postHomeR = do
@@ -140,7 +115,7 @@ postHomeR = do
              <br>
           <div .column #info>
            <div .inside>
-            blabla
+            ^{helpText}
          <div #cmd>
              <input #prompt type=text name=message
                 placeholder="Type Command ..." autofocus>
