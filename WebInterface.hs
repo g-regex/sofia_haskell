@@ -53,7 +53,7 @@ helpText =
             <ul>
                 <li>A Sofia expression.
           <li><code>restate <var>[(Int, Int)] [String]</var></code><br>
-            (e.g. <code>restate [(1,1), (1,2)] "x"</code>)<br>
+            (e.g. <code>restate [(1,1), (1,2)] ["x"]</code>)<br>
             Parameters:
             <ul>
                 <li>List of positions (line, column) of atoms.
