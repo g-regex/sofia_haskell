@@ -52,12 +52,12 @@ helpText =
             Parameters:
             <ul>
                 <li>A Sofia expression.
-          <li><code>restate <var>[(Int, Int)] String</var></code><br>
+          <li><code>restate <var>[(Int, Int)] [String]</var></code><br>
             (e.g. <code>restate [(1,1), (1,2)] "x"</code>)<br>
             Parameters:
             <ul>
                 <li>List of positions (line, column) of atoms.
-                <li>New name of variable to be renamed.
+                <li>List of new names of free variables to be renamed.
           <li><code>synapsis</code>
           <li><code>apply <var>Int [(Int, Int)] Int</var></code><br>
             (e.g. <code>apply 2 [(1,1), (1,2)] 3</code>)<br>

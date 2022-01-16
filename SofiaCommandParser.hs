@@ -30,7 +30,7 @@ option1 p =
        return (vs1 ++ vs2)
 
 legalChars = ['[', ']'] ++ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++
-             ['%',' ','+', '!']
+             ['%',' ','+', '!', ':', '=']
 
 sCharacter :: Parser Char
 sCharacter = sat (\x -> elem x legalChars)
@@ -103,9 +103,9 @@ sAssume = do sWord "assume"
 
 sRestate :: Parser (Proof -> Proof)
 sRestate = do sWord "restate"
-              pl <- sList sPair
-              cs <- sString
-              return (restate pl cs)
+              pl  <- sList sPair
+              css <- sList sString
+              return (restate pl css)
 
 sSynapsis :: Parser (Proof -> Proof)
 sSynapsis = do sWord "synapsis"

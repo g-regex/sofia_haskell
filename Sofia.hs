@@ -713,6 +713,24 @@ treeSubstOneSymbol ls cs cs' t =
     treeSubstSymbol cscss t where
         cscss = [(cs, strAltName cs' (map strFromVar (varsBound ls)))]
 
+-- |Renames variables in an expression to new names or the
+-- next available alternatives in the context of a given proof.
+treeSubstSymbolList ::  [ProofLine] -- ^A list of `ProofLine`s constituting
+                                    --  the proof.
+                     -> [String]    -- ^`String` representations of the
+                                    --  variables to be renamed
+                                    --  (e.g.\ `["u", "v"]`)
+                     -> [String]    -- ^`String` representations of the suggested
+                                    --  suggested new names for the variables
+                                    --  (e.g.\ `["x", "y"]`)
+                     -> SofiaTree   -- ^The expression in which the variable
+                                    --  should be renamed.
+                     -> SofiaTree   -- ^The resulting expression.
+treeSubstSymbolList ls css css' t =
+    treeSubstSymbol cscss t where
+        cscss = [(cs, strAltName cs' (map strFromVar (varsBound ls)))
+                | cs <- css, cs' <- css']
+
 ---------------------------- SYNAPSIS HELPERS ----------------------------------
 
 -- |Given a list of `ProofLine`s (i.e.\ a proof), a list a `ProofLine`s
@@ -901,24 +919,20 @@ selfequate (line, col) p = p <+> l
 restate ::       [(Int, Int)] -- ^List of positions of the form /(line, column)/
                               --  of the atoms from which the new statement
                               --  should be built.
-              -> String       -- ^The new name of variable to be renamed; empty
-                              --  `String` if no renaming is desired.
+              -> [String]     -- ^The names of free variable to be renamed;
+                              --  empty list if no renaming is desired.
               -> Proof        -- ^The `Proof` to which the generated `ProofLine`
                               --  should be appended to.
               -> Proof        -- ^The resulting `Proof`.
-restate pos_list s p = p <+> l
+restate pos_list css p = p <+> l
    where
     p' = toListFromProof p
     l = toProofFromList [newLine
-         (1 + numCurLn p')              -- increase line number
-         (numCurDepth p')               -- keep depth the same
-         (treeSubstOneSymbol p' v s t)  -- substitute first free variable with s
+         (1 + numCurLn p')                  -- increase line number
+         (numCurDepth p')                   -- keep depth the same
+         (treeSubstSymbolList p' vs css t)  -- substitute free variables
          (Restate pos_list)]
     t  = treeDeduceREST p' pos_list
-    v  = if vs == []
-         then ""
-         else head vs                     -- first free variable in t
-                                          -- (or empty string)
     vs = map strFromVar (varsFree p' t)   -- list of all free variables in t
 
 
@@ -1065,7 +1079,7 @@ axiom_subset = postulate ("[[X][[X] is a set][Y][[Y] is a set]:[[[X] sub " ++
 ex7_1 = assume "[X][[X] is a set]" newProof
 ex7_2 = assume "[x][[x] is a set]" ex7_1
 ex7_3 = assume "[[x] in [X]]" ex7_2
-ex7_4 = restate [(3,1)] "" ex7_3
+ex7_4 = restate [(3,1)] [] ex7_3
 ex7_5 = synapsis ex7_4
 ex7_6 = synapsis ex7_5
 ex7_7 = recall axiom_subset ex7_6
@@ -1128,7 +1142,7 @@ ex10_3 = recall axiom_variable_introduction ex10_2
 ex10_4 = apply 3 [(1,1)] 1 ex10_3
 ex10_5 = leftsub 4 1 [1..] 2 2 ex10_4
 ex10_6 = leftsub 4 2 [1..] 2 1 ex10_5
-ex10_7 = restate [(5,1),(6,1)] "x" ex10_6
+ex10_7 = restate [(5,1),(6,1)] ["x"] ex10_6
 
 -- >>> ex1_3
 -- ╔[X] /L1: assumption.
