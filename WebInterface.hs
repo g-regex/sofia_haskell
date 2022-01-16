@@ -72,7 +72,7 @@ helpText =
             <ul>
                 <li>The line of the equality.
                 <li>The line of the statement.
-                <li>A list of indices of the atoms which re to be substituted.
+                <li>A list of indices of the atoms which are to be substituted.
                 <li>The column of the equality.
                 <li>The column of the statement.
           <li><code>leftsub <var>Int Int [Int] Int Int</var></code><br>
