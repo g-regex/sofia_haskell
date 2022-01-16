@@ -120,7 +120,7 @@ postHomeR = do
       <br>
       <div #cmd>
          <input #prompt type=text name=message
-            placeholder="Type Command ..." autofocus>
+            placeholder="Type Command ..." size="80" autofocus>
      |]
 
 main :: IO ()
