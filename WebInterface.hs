@@ -87,8 +87,9 @@ postHomeR = do
     defaultLayout
      [whamlet|
      <form method=post action=@{HomeR}>
-         <div .row>
-          <div .column #proof>
+      <table width="100%" cellspacing="0" border="1" #tbl>
+         <tr .row>
+          <td #proof valign="top" width="50%">
            <div .inside>
              $maybe m <- msg
                  $if validateCmd $ unpack m
@@ -113,12 +114,13 @@ postHomeR = do
                  $nothing
                      Hello! You can start creating a proof.
              <br>
-          <div .column #info>
+          <td #info valign="top" width="50%">
            <div .inside>
             ^{helpText}
-         <div #cmd>
-             <input #prompt type=text name=message
-                placeholder="Type Command ..." autofocus>
+      <br>
+      <div #cmd>
+         <input #prompt type=text name=message
+            placeholder="Type Command ..." autofocus>
      |]
 
 main :: IO ()
