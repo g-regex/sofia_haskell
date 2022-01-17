@@ -13,7 +13,7 @@ The parser for the Sofia proof assistant.
 -}
 
 --module SofiaParser where
-module SofiaParser (treeParse) where
+module SofiaParser (treeParse, legalSymbolChars, isValidSymbol) where
 
 import Parsing
 import SofiaTree
@@ -29,10 +29,13 @@ option1 p =
        vs2 <- option p
        return (vs1 ++ vs2)
 
-legalChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['%',' ','+', '!']
+legalSymbolChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['%',' ','+', '!']
+
+isValidSymbol :: String -> Bool
+isValidSymbol cs = [c | c <- cs, not $ elem c legalSymbolChars] == []
 
 sCharacter :: Parser Char
-sCharacter = sat (\x -> elem x legalChars)
+sCharacter = sat (\x -> elem x legalSymbolChars)
 
 specialChar :: Char -> Parser Char
 specialChar x = sat (== x)
@@ -107,4 +110,8 @@ sExpression =
              return x
 
 treeParse :: String -> SofiaTree
-treeParse x = fst $ head $ parse sExpression x
+treeParse x = case parsed of
+                []        -> newSofiaTree "" Error []
+                [(_, x:xs)] -> newSofiaTree "" Error []
+                _         ->  fst $ head $ parsed
+                where parsed = parse sExpression x

@@ -52,6 +52,11 @@ helpText =
             Parameters:
             <ul>
                 <li>A Sofia expression.
+          <li><code>selfequate <var>(Int, Int)</var></code><br>
+            (e.g. <code>selfequate (1,1)</code>)<br>
+            Parameters:
+            <ul>
+                <li>Position (line, column) of atom.
           <li><code>restate <var>[(Int, Int)] [String]</var></code><br>
             (e.g. <code>restate [(1,1), (1,2)] ["x"]</code>)<br>
             Parameters:

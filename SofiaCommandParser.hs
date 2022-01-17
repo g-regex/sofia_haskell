@@ -118,6 +118,11 @@ sApply = do sWord "apply"
             y  <- sInt
             return (apply x pl y)
 
+sSelfequate :: Parser (Proof -> Proof)
+sSelfequate = do sWord "selfequate"
+                 p <- sPair
+                 return (selfequate p)
+
 sRightSub :: Parser (Proof -> Proof)
 sRightSub = do sWord "rightsub"
                x  <- sInt
@@ -139,7 +144,7 @@ sLeftSub  = do sWord "leftsub"
 sCommand :: Parser (Proof -> Proof)
 sCommand = do many (specialChar ' ')
               x <- (sAssume <|> sRestate <|> sSynapsis <|> sApply <|> sRightSub
-                   <|> sLeftSub)
+                   <|> sLeftSub <|> sSelfequate)
               many (specialChar ' ')
               return x
 
