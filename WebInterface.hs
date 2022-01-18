@@ -70,11 +70,15 @@ postHomeR = do
     let newhistorylist = case newhistory == [] of
             True  -> []
             False -> (Data.List.Split.splitOn ";" newhistory)
-    let proof   = evalList newhistorylist
-    let lines   = strProoflines proof
-    let valid   = errorSyntax == []
+    let historylist = case history == [] of
+            True  -> []
+            False -> (Data.List.Split.splitOn ";" history)
+    let oldproof = evalList historylist
+    let proof    = evalList newhistorylist
+    let lines    = strProoflines proof
+    let valid    = errorSyntax == []
     let errorSemantics = if and [errorSyntax == [], message /= []]
-                         then validateSemantics message proof
+                         then validateSemantics message oldproof
                          else []
     let errorMsgs = errorSyntax ++ errorSemantics
     defaultLayout
