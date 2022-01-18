@@ -1,0 +1,38 @@
+Available commands:
+ <ul>
+  <li><code>assume <var>String</var></code><br>
+    (e.g. <code>assume "[x]"</code>)<br>
+    Parameters:
+    <ul>
+        <li>A Sofia expression.
+  <li><code>selfequate <var>(Int, Int)</var></code><br>
+    (e.g. <code>selfequate (1,1)</code>)<br>
+    Parameters:
+    <ul>
+        <li>Position (line, column) of atom.
+  <li><code>restate <var>[(Int, Int)] [String]</var></code><br>
+    (e.g. <code>restate [(1,1), (1,2)] ["x"]</code>)<br>
+    Parameters:
+    <ul>
+        <li>List of positions (line, column) of atoms.
+        <li>List of new names of free variables to be renamed.
+  <li><code>synapsis</code>
+  <li><code>apply <var>Int [(Int, Int)] Int</var></code><br>
+    (e.g. <code>apply 2 [(1,1), (1,2)] 3</code>)<br>
+    Parameters:
+    <ul>
+        <li>The line of the implication to be applied.
+        <li>List of positions (line, column) of atoms for replacements.
+        <li>The column of the implication to be applied.
+  <li><code>rightsub <var>Int Int [Int] Int Int</var></code><br>
+    (e.g. <code>rightsub 2 3 [1, 2] 1 4</code>)<br>
+    Parameters:
+    <ul>
+        <li>The line of the equality.
+        <li>The line of the statement.
+        <li>A list of indices of the atoms which are to be substituted.
+        <li>The column of the equality.
+        <li>The column of the statement.
+  <li><code>leftsub <var>Int Int [Int] Int Int</var></code><br>
+    (e.g. <code>leftsub 2 3 [1, 2] 1 4</code>)<br>
+    The parameters are the same as for <code>rightsub</code>.
