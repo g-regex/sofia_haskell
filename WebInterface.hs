@@ -62,7 +62,15 @@ postHomeR = do
     let message = case msg of
             Nothing -> []
             Just m  -> unpack m
-    let newhistory = if or [errorSyntax /= [], message == []]
+    let historylist = case history == [] of
+            True  -> []
+            False -> (Data.List.Split.splitOn ";" history)
+    let oldproof = evalList historylist
+    let errorSemantics = if and [errorSyntax == [], message /= []]
+                         then validateSemantics message oldproof
+                         else []
+    let errorMsgs = errorSyntax ++ errorSemantics
+    let newhistory = if or [errorMsgs /= [], message == []]
                      then history
                      else
                         if history == [] then message
@@ -70,17 +78,9 @@ postHomeR = do
     let newhistorylist = case newhistory == [] of
             True  -> []
             False -> (Data.List.Split.splitOn ";" newhistory)
-    let historylist = case history == [] of
-            True  -> []
-            False -> (Data.List.Split.splitOn ";" history)
-    let oldproof = evalList historylist
     let proof    = evalList newhistorylist
     let lines    = strProoflines proof
-    let valid    = errorSyntax == []
-    let errorSemantics = if and [errorSyntax == [], message /= []]
-                         then validateSemantics message oldproof
-                         else []
-    let errorMsgs = errorSyntax ++ errorSemantics
+    let valid    = errorMsgs == []
     defaultLayout
      [whamlet|
      <form method=post action=@{HomeR}>
