@@ -870,30 +870,22 @@ postulate ::     String                 -- ^The `String` representation of the
 postulate cs cs' = (treeParse cs, cs')
 
 --------------------------------- Validation -----------------------------------
--- Error codes:
--- (2, ""): Syntax error in Sofia expression.
--- (3, ""): Sofia expression is not a statement.
--- (4, "x"): Line `x` does not exist in the given `Proof`.
--- (5, "(x,y)"): Column `y` does not exist in line `x` of the given `Proof`.
--- (6, "..."): The `String` `"..."` is not a valid symbol.
--- (7, "..."): The Sofia expression `...` is not an implication.
--- (8, "..."): The Sofia expression `...` is not an equality.
--- (9, ""): Cannot perform synapsis at depth 0.
 
 showErrors :: ErrorCodes -> [String]
 showErrors ecs = [showErr ec | ec <- ecs]
    where
     showErr ec = case fst ec of
-        2 -> "Syntax error in Sofia expression."
-        3 -> "Sofia expression is not a statement."
-        4 -> "Line " ++ (snd ec) ++ " does not exist in the given proof."
-        5 -> (snd ec) ++ " is not a valid (line, column) pair."
-        6 -> "The string \"" ++ (snd ec) ++ "\" is not a valid symbol."
-        7 -> "The Sofia expression \"" ++ (snd ec) ++
+        2  -> "Syntax error in Sofia expression."
+        3  -> "Sofia expression is not a statement."
+        4  -> "Line " ++ (snd ec) ++ " does not exist in the given proof."
+        5  -> (snd ec) ++ " is not a valid (line, column) pair."
+        6  -> "The string \"" ++ (snd ec) ++ "\" is not a valid symbol."
+        7  -> "The Sofia expression \"" ++ (snd ec) ++
                 "\" is not an implication."
-        8 -> "The Sofia expression \"" ++ (snd ec) ++
+        8  -> "The Sofia expression \"" ++ (snd ec) ++
                 "\" is not an equality."
-        9 -> "Cannot perform synapsis at depth 0."
+        9  -> "Cannot perform synapsis on empty proof."
+        10 -> "Cannot perform synapsis at depth 0."
 
 type ErrorCodes = [(Int, String)]
 
@@ -938,8 +930,10 @@ validateApply i iis i' p = validateIndices iis p ++ validImp
                     existsImp
 
 validateSynapsis :: Proof -> ErrorCodes
-validateSynapsis p = if (numDepth $ last $ toListFromProof p) == 0
-                     then [(9, "")] else []
+validateSynapsis p = case p of 
+                     PListEnd -> [(9, "")]
+                     _        ->  if (numDepth $ last $ toListFromProof p) == 0
+                                  then [(10, "")] else []
 
 validateSubst :: Int -> Int -> Int -> Int -> Proof -> ErrorCodes
 validateSubst eqx sx eqy sy p = validateIndices [(sx, sy)] p ++ validEq
