@@ -70,7 +70,14 @@ module Sofia (
     treeSubstOneSymbol,
 
     -- *Validation
-    showErrors
+    showErrors,
+    ErrorCodes,
+    validateAssume,
+    validateSelfequate,
+    validateRestate,
+    validateSynapsis,
+    validateApply,
+    validateSubst
 
     -- *Examples
     -- $examples
@@ -1026,7 +1033,7 @@ restate pos_list css p = if valid then p <+> l else p
          (1 + numCurLn p')                  -- increase line number
          (numCurDepth p')                   -- keep depth the same
          (treeSubstSymbolList p' vs css t)  -- substitute free variables
-         (Restate pos_list)]
+         (Restate pos_list css)]
     t  = treeDeduceREST p' pos_list
     vs = map strFromVar (varsFree p' t)   -- list of all free variables in t
 

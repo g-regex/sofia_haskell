@@ -3,11 +3,13 @@
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
+
 import Yesod
 import Data.Text
 import Data.List.Split
 import Text.Lucius (CssUrl, luciusFile, luciusFileReload, renderCss)
 import SofiaCommandParser
+import SofiaTree
 
 data App = App
 
@@ -38,10 +40,12 @@ instance RenderMessage App FormMessage where
 getHomeR :: Handler Html
 getHomeR = postHomeR
 
-genProof :: String -> [String] -> [Text]
-genProof h ms = Prelude.map pack $
-                 Data.List.Split.splitOn "\n" $ show $ evalList $
-                 (Data.List.Split.splitOn ";" h) ++ ms
+strProoflines :: Proof -> [Text]
+strProoflines p = case p of
+                PListEnd -> []
+                _        -> Prelude.map pack $
+                                (Data.List.Split.splitOn "\n" $ show $ p) ++
+                                [""]
 
 helpText = $(whamletFile "help.hamlet")
 
@@ -49,10 +53,26 @@ postHomeR :: Handler Html
 postHomeR = do
     hst <- runInputPost $ iopt textField "history"
     msg <- runInputPost $ iopt textField "message"
+    let history = case hst of
+            Nothing -> []
+            Just h  -> unpack h
     let errorMsgs = case msg of
             Nothing -> []
             Just m  -> validateCmd $ unpack m
-    let valid = errorMsgs == []
+    let message = case msg of
+            Nothing -> []
+            Just m  -> unpack m
+    let valid   = errorMsgs == []
+    let newhistory = if or [not valid, message == []]
+                     then history
+                     else
+                        if history == [] then message
+                        else (history ++ ";" ++ message)
+    let newhistorylist = case newhistory == [] of
+            True  -> []
+            False -> (Data.List.Split.splitOn ";" newhistory)
+    let proof   = evalList newhistorylist
+    let lines   = strProoflines proof
     defaultLayout
      [whamlet|
      <form method=post action=@{HomeR}>
@@ -60,28 +80,14 @@ postHomeR = do
          <tr .row>
           <td #proof valign="top" width="50%">
            <div .inside>
-             $maybe m <- msg
-                 $if valid
-                     $maybe h <- hst
-                             $forall line <- genProof (unpack h) [unpack m]
-                                 #{line}<br>
-                             <input type=hidden name=history value="#{h};#{m}">
-                     $nothing
-                         #{pack (show $ evalList [unpack m])}<br>
-                         <input type=hidden name=history value="#{m}">
-                 $else
-                     $maybe h <- hst
-                         $forall line <- genProof (unpack h) []
-                             #{line}<br>
-                         <input type=hidden name=history value="#{h}"><br>
+                 $if or [newhistory /= [], not valid]
+                     $forall line <- lines
+                         #{line}<br>
+                     <input type=hidden name=history
+                        value="#{pack newhistory}">
                      $forall line <- Prelude.map pack errorMsgs
                          <b>Error: #{line}<br>
-             $nothing
-                 $maybe h <- hst
-                     $forall line <- genProof (unpack h) []
-                         #{line}<br>
-                     <input type=hidden name=history value="#{h}">
-                 $nothing
+                 $else
                      Hello! You can start creating a proof.
              <br>
           <td #info valign="top" width="50%">

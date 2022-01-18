@@ -21,7 +21,7 @@ module SofiaTree
      DeductionRule (Assumption, Recall, Selfequate, Restate, Synapsis, Apply,
                     RightSub, LeftSub),
      ProofLine,
-     Proof,
+     Proof (PListEnd),
 
      -- * Operators
      (<+>),
@@ -98,7 +98,8 @@ instance (Printable a, Show a, SType b, Show b) => Show (Tree a b) where
                                     x:xs -> (show x) ++ (showtree xs)
 
 -- |A (possibly parametrised) deduction rule.
-data DeductionRule = Assumption String | Selfequate (Int, Int) | Restate [(Int, Int)]
+data DeductionRule = Assumption String | Selfequate (Int, Int)
+                     | Restate [(Int, Int)] [String]
                      | Synapsis Int Int | Apply Int [(Int, Int)] Int
                      | RightSub Int Int [Int] Int Int
                      | LeftSub  Int Int [Int] Int Int
@@ -113,7 +114,7 @@ instance Show (DeductionRule) where
     show (Assumption a)        = "assumption."
     show (Selfequate (a,b))    = "self-equate from L" ++ (show a) ++ "(" ++
                                  (show b) ++ ")."
-    show (Restate xs)          = "restatement (see lines " ++ (show xs) ++ ")."
+    show (Restate xs css)      = "restatement (see lines " ++ (show xs) ++ ")."
     show (Synapsis a b)        = "synapsis (L" ++ (show a) ++ "-" ++ (show b) ++
                                  ")."
     show (Apply a xs b)        = "application of L" ++ (show a) ++ "." ++

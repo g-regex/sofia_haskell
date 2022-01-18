@@ -96,57 +96,90 @@ sPairList = sList sPair
 sIntList :: Parser [Int]
 sIntList = sList sInt
 
-sAssume :: Parser (Proof -> Proof)
+sAssume :: Parser DeductionRule
 sAssume = do sWord "assume"
              cs <- sString
-             return (assume cs)
+             return (Assumption cs)
 
-sRestate :: Parser (Proof -> Proof)
+sRestate :: Parser (DeductionRule)
 sRestate = do sWord "restate"
               pl  <- sList sPair
               css <- sList sString
-              return (restate pl css)
+              return (Restate pl css)
 
-sSynapsis :: Parser (Proof -> Proof)
+-- NOTE 0 0 will be disregrded
+sSynapsis :: Parser (DeductionRule)
 sSynapsis = do sWord "synapsis"
-               return (synapsis)
+               return (Synapsis 0 0)
 
-sApply :: Parser (Proof -> Proof)
+sApply :: Parser (DeductionRule)
 sApply = do sWord "apply"
             x  <- sInt
             pl <- sList sPair
             y  <- sInt
-            return (apply x pl y)
+            return (Apply x pl y)
 
-sSelfequate :: Parser (Proof -> Proof)
+sSelfequate :: Parser (DeductionRule)
 sSelfequate = do sWord "selfequate"
                  p <- sPair
-                 return (selfequate p)
+                 return (Selfequate p)
 
-sRightSub :: Parser (Proof -> Proof)
+sRightSub :: Parser (DeductionRule)
 sRightSub = do sWord "rightsub"
                x  <- sInt
                y  <- sInt
                pl <- sList sInt
                x' <- sInt
                y' <- sInt
-               return (rightsub x y pl x' y')
+               return (RightSub x y pl x' y')
 
-sLeftSub :: Parser (Proof -> Proof)
+sLeftSub :: Parser (DeductionRule)
 sLeftSub  = do sWord "leftsub"
                x  <- sInt
                y  <- sInt
                pl <- sList sInt
                x' <- sInt
                y' <- sInt
-               return (leftsub x y pl x' y')
+               return (LeftSub x y pl x' y')
 
 sCommand :: Parser (Proof -> Proof)
 sCommand = do many (specialChar ' ')
               x <- (sAssume <|> sRestate <|> sSynapsis <|> sApply <|> sRightSub
                    <|> sLeftSub <|> sSelfequate)
               many (specialChar ' ')
-              return x
+              return (commandFromDedRule x)
+
+sValidation :: Proof -> Parser [String]
+sValidation p = do
+              many (specialChar ' ')
+              x <- (sAssume <|> sRestate <|> sSynapsis <|> sApply <|> sRightSub
+                   <|> sLeftSub <|> sSelfequate)
+              many (specialChar ' ')
+              return (validationFromDedRule x p)
+
+-- TODO recall
+commandFromDedRule :: DeductionRule -> (Proof -> Proof)
+commandFromDedRule dr = case dr of
+    Assumption cs       -> assume cs
+    Selfequate ii       -> selfequate ii
+    Restate iis css     -> restate iis css
+    Synapsis i i'       -> synapsis
+    Apply a xs b        -> apply a xs b
+    RightSub a c xs b d -> rightsub a c xs b d
+    LeftSub  a c xs b d -> leftsub a c xs b d
+
+-- TODO recall
+validationFromDedRule :: DeductionRule -> Proof -> [String]
+validationFromDedRule dr p = showErrors validation
+   where
+    validation = case dr of
+        Assumption cs       -> validateAssume cs
+        Selfequate ii       -> validateSelfequate ii p
+        Restate iis css     -> validateRestate iis css p
+        Synapsis i i'       -> validateSynapsis p
+        Apply a xs b        -> validateApply a xs b p
+        RightSub a c xs b d -> validateSubst a c b d p
+        LeftSub  a c xs b d -> validateSubst a c b d p
 
 commandParse :: String -> (Proof -> Proof)
 commandParse x = fst $ head $ parse sCommand x
