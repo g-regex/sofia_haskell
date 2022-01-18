@@ -161,8 +161,10 @@ evalPList p (pp:pps) = evalPList (pp p) pps
 evalList :: [String] -> Proof
 evalList css = evalPList newProof (listParse css)
 
-validateCmd :: String -> Bool
-validateCmd cs = and [length (parsed) == 1,
+validateCmd :: String -> [String]
+validateCmd cs = if correctSyntax then []
+                 else ["Syntax error in command."]
+    where
+     parsed = parse sCommand cs
+     correctSyntax = and [length (parsed) == 1,
                       (length $ snd $ head $ parsed) == 0]
-                    where
-                     parsed = parse sCommand cs

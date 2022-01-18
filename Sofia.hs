@@ -67,7 +67,10 @@ module Sofia (
     strAltName,
     strstrsRename,
     treeAutoSubstSymbols,
-    treeSubstOneSymbol
+    treeSubstOneSymbol,
+
+    -- *Validation
+    showErrors
 
     -- *Examples
     -- $examples
@@ -867,8 +870,23 @@ postulate cs cs' = (treeParse cs, cs')
 -- (5, "(x,y)"): Column `y` does not exist in line `x` of the given `Proof`.
 -- (6, "..."): The `String` `"..."` is not a valid symbol.
 -- (7, "..."): The Sofia expression `...` is not an implication.
---
+-- (8, "..."): The Sofia expression `...` is not an equality.
 -- (9, ""): Cannot perform synapsis at depth 0.
+
+showErrors :: ErrorCodes -> [String]
+showErrors ecs = ["Error: " ++ showErr ec | ec <- ecs]
+   where
+    showErr ec = case fst ec of
+        2 -> "Syntax error in Sofia expression."
+        3 -> "Sofia expression is not a statement."
+        4 -> "Line " ++ (snd ec) ++ " does not exist in the given proof."
+        5 -> (snd ec) ++ " is not a valid (line, column) pair."
+        6 -> "The string \"" ++ (snd ec) ++ "\" is not a valid symbol."
+        7 -> "The Sofia expression \"" ++ (snd ec) ++
+                "\" is not an implication."
+        8 -> "The Sofia expression \"" ++ (snd ec) ++
+                "\" is not an equality."
+        9 -> "Cannot perform synapsis at depth 0."
 
 type ErrorCodes = [(Int, String)]
 

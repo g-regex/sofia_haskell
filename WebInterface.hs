@@ -43,52 +43,16 @@ genProof h ms = Prelude.map pack $
                  Data.List.Split.splitOn "\n" $ show $ evalList $
                  (Data.List.Split.splitOn ";" h) ++ ms
 
-helpText =
-    [hamlet|
-        Available commands:
-         <ul>
-          <li><code>assume <var>String</var></code><br>
-            (e.g. <code>assume "[x]"</code>)<br>
-            Parameters:
-            <ul>
-                <li>A Sofia expression.
-          <li><code>selfequate <var>(Int, Int)</var></code><br>
-            (e.g. <code>selfequate (1,1)</code>)<br>
-            Parameters:
-            <ul>
-                <li>Position (line, column) of atom.
-          <li><code>restate <var>[(Int, Int)] [String]</var></code><br>
-            (e.g. <code>restate [(1,1), (1,2)] ["x"]</code>)<br>
-            Parameters:
-            <ul>
-                <li>List of positions (line, column) of atoms.
-                <li>List of new names of free variables to be renamed.
-          <li><code>synapsis</code>
-          <li><code>apply <var>Int [(Int, Int)] Int</var></code><br>
-            (e.g. <code>apply 2 [(1,1), (1,2)] 3</code>)<br>
-            Parameters:
-            <ul>
-                <li>The line of the implication to be applied.
-                <li>List of positions (line, column) of atoms for replacements.
-                <li>The column of the implication to be applied.
-          <li><code>rightsub <var>Int Int [Int] Int Int</var></code><br>
-            (e.g. <code>rightsub 2 3 [1, 2] 1 4</code>)<br>
-            Parameters:
-            <ul>
-                <li>The line of the equality.
-                <li>The line of the statement.
-                <li>A list of indices of the atoms which are to be substituted.
-                <li>The column of the equality.
-                <li>The column of the statement.
-          <li><code>leftsub <var>Int Int [Int] Int Int</var></code><br>
-            (e.g. <code>leftsub 2 3 [1, 2] 1 4</code>)<br>
-            The parameters are the same as for <code>rightsub</code>.
-    |]
+helpText = $(whamletFile "help.hamlet")
 
 postHomeR :: Handler Html
 postHomeR = do
     hst <- runInputPost $ iopt textField "history"
     msg <- runInputPost $ iopt textField "message"
+    let errorMsgs = case msg of
+            Nothing -> []
+            Just m  -> validateCmd $ unpack m
+    let valid = errorMsgs == []
     defaultLayout
      [whamlet|
      <form method=post action=@{HomeR}>
@@ -97,7 +61,7 @@ postHomeR = do
           <td #proof valign="top" width="50%">
            <div .inside>
              $maybe m <- msg
-                 $if validateCmd $ unpack m
+                 $if valid
                      $maybe h <- hst
                              $forall line <- genProof (unpack h) [unpack m]
                                  #{line}<br>
@@ -109,8 +73,9 @@ postHomeR = do
                      $maybe h <- hst
                          $forall line <- genProof (unpack h) []
                              #{line}<br>
-                         <input type=hidden name=history value="#{h}">
-                     <br><b>Error: Invalid command.</b>
+                         <input type=hidden name=history value="#{h}"><br>
+                     $forall line <- Prelude.map pack errorMsgs
+                         <b>Error: #{line}<br>
              $nothing
                  $maybe h <- hst
                      $forall line <- genProof (unpack h) []
@@ -126,7 +91,7 @@ postHomeR = do
       <div #cmd>
          <input #prompt type=text name=message
             placeholder="Type Command ..." size="80" autofocus>
-     |]
+     |] 
 
 main :: IO ()
 main = warp 3000 App
