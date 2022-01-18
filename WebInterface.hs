@@ -56,14 +56,13 @@ postHomeR = do
     let history = case hst of
             Nothing -> []
             Just h  -> unpack h
-    let errorMsgs = case msg of
+    let errorSyntax = case msg of
             Nothing -> []
-            Just m  -> validateCmd $ unpack m
+            Just m  -> validateSyntax $ unpack m
     let message = case msg of
             Nothing -> []
             Just m  -> unpack m
-    let valid   = errorMsgs == []
-    let newhistory = if or [not valid, message == []]
+    let newhistory = if or [errorSyntax /= [], message == []]
                      then history
                      else
                         if history == [] then message
@@ -73,6 +72,11 @@ postHomeR = do
             False -> (Data.List.Split.splitOn ";" newhistory)
     let proof   = evalList newhistorylist
     let lines   = strProoflines proof
+    let valid   = errorSyntax == []
+    let errorSemantics = if and [errorSyntax == [], message /= []]
+                         then validateSemantics message proof
+                         else []
+    let errorMsgs = errorSyntax ++ errorSemantics
     defaultLayout
      [whamlet|
      <form method=post action=@{HomeR}>

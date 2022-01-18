@@ -12,7 +12,8 @@ Portability : POSIX
 The parser for commands of the Sofia proof assistant.
 -}
 
-module SofiaCommandParser (commandParse, evalList, validateCmd) where
+module SofiaCommandParser (commandParse, evalList, validateSyntax,
+        validateSemantics, sValidation) where
 
 import Parsing
 import Sofia
@@ -194,10 +195,18 @@ evalPList p (pp:pps) = evalPList (pp p) pps
 evalList :: [String] -> Proof
 evalList css = evalPList newProof (listParse css)
 
-validateCmd :: String -> [String]
-validateCmd cs = if correctSyntax then []
+validateSyntax :: String -> [String]
+validateSyntax cs = if correctSyntax then []
                  else ["Syntax error in command."]
     where
      parsed = parse sCommand cs
      correctSyntax = and [length (parsed) == 1,
+                      (length $ snd $ head $ parsed) == 0]
+
+validateSemantics :: String -> Proof -> [String]
+validateSemantics cs p = if parsingSuccess then fst $ head $ parsed
+                 else ["Unparsed input (" ++ (snd $ head parsed) ++ ")."]
+    where
+     parsed = parse (sValidation p) cs
+     parsingSuccess = and [length (parsed) == 1,
                       (length $ snd $ head $ parsed) == 0]

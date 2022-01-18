@@ -881,7 +881,7 @@ postulate cs cs' = (treeParse cs, cs')
 -- (9, ""): Cannot perform synapsis at depth 0.
 
 showErrors :: ErrorCodes -> [String]
-showErrors ecs = ["Error: " ++ showErr ec | ec <- ecs]
+showErrors ecs = [showErr ec | ec <- ecs]
    where
     showErr ec = case fst ec of
         2 -> "Syntax error in Sofia expression."
