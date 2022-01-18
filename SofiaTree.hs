@@ -98,7 +98,7 @@ instance (Printable a, Show a, SType b, Show b) => Show (Tree a b) where
                                     x:xs -> (show x) ++ (showtree xs)
 
 -- |A (possibly parametrised) deduction rule.
-data DeductionRule = Assumption | Selfequate (Int, Int) | Restate [(Int, Int)]
+data DeductionRule = Assumption String | Selfequate (Int, Int) | Restate [(Int, Int)]
                      | Synapsis Int Int | Apply Int [(Int, Int)] Int
                      | RightSub Int Int [Int] Int Int
                      | LeftSub  Int Int [Int] Int Int
@@ -110,7 +110,7 @@ data DeductionRule = Assumption | Selfequate (Int, Int) | Restate [(Int, Int)]
 -- |`DeductionRule` is displayed in a similar way as in the Python
 -- implementation.
 instance Show (DeductionRule) where
-    show (Assumption)          = "assumption."
+    show (Assumption a)        = "assumption."
     show (Selfequate (a,b))    = "self-equate from L" ++ (show a) ++ "(" ++
                                  (show b) ++ ")."
     show (Restate xs)          = "restatement (see lines " ++ (show xs) ++ ")."
@@ -195,8 +195,8 @@ showLine pl b =
       where
        showLine' pl 0 = ""
        showLine' pl 1 = case ruleFromLn pl of
-                        Assumption -> if b then "■" else "╔"
-                        _          -> if b then "╚" else "║"
+                        Assumption cs -> if b then "■" else "╔"
+                        _             -> if b then "╚" else "║"
        showLine' pl i = "║" ++ (showLine' pl (i - 1))
 
 -- |A `Proof` is displayed in bracket proof form like in the Python
