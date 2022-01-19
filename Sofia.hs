@@ -251,120 +251,41 @@ matchesPattern (i, yis) t = patternFromTree t i == (i, yis)
 isVar :: SofiaTree -> Bool
 isVar t =  matchesPattern patternVar t
 
----------------------- EXPERIMENTAL/NOT NEEDED ---------------------------------
-getSubtree :: [(a, b, Int)] -> [(a, b, Int)]
-getSubtree ((a, b, i):xs) = getSubtreeHelper [(a, b, i)] xs i
-
-getSubtreeHelper :: [(a, b, Int)] -> [(a, b, Int)] -> Int -> [(a, b, Int)]
-getSubtreeHelper xs _ 0 = xs 
-getSubtreeHelper xs [] _ = [] 
-getSubtreeHelper xs ((a, b, i):ys) i' =
-    getSubtreeHelper (xs ++ [(a, b, i)]) ys (i' + i - 1)
-
-treeFromSchema :: Schema -> SofiaTree
-treeFromSchema x = head $ treesFromSchema x
-
-treesFromSchema :: Schema -> [SofiaTree]
-treesFromSchema [] = []
-treesFromSchema ((cs, y, 0):[]) = [newSofiaTree cs y []]
-treesFromSchema ((cs, y, 0):xs) = [newSofiaTree cs y []] ++ (treesFromSchema xs)
-treesFromSchema ((cs, y, i):xs) =
-    [newSofiaTree cs y (treesFromSchema sub)] ++ (treesFromSchema rest)
-       where
-        sub  = tail $ getSubtree ((cs, y, i):xs)
-        rest = drop (length sub) xs
-
-preorderPartial :: (SofiaTree -> b) ->
-                   (SofiaTree -> b) ->
-                   (SofiaTree -> Bool) ->
-                   SofiaTree ->
-                   [b]
-preorderPartial xf xf' f t =
-    if f t
-    then [xf' t]
-    else
-        if getSubtrees t == []
-        then [xf t]
-        else [xf t] ++ [x | t' <- (getSubtrees t),
-                            x <- preorderPartial xf xf' f t']
-
-type Schema = [(String, TypeOfNode, Int)]
-
-typeOfTuple :: (String, TypeOfNode, Int) -> TypeOfNode
-typeOfTuple (_, y, _) = y
-
--- Creates a `Schema` from a `SofiaTree`.
-schemaFromTree ::     SofiaTree    -- ^The `SofiaTree`.
-                    -> Schema      -- ^The resulting `Schema`.
-schemaFromTree t =
-    preorderPartial (\x -> (getSymbol x, toType x, length $ getSubtrees x))
-                    (\x -> ("", Placeholder, 0))
-                    (\x -> matchesPattern patternPH x) t
-
-schemaParse :: String -> Schema
-schemaParse cs = schemaFromTree $ treeParse cs
-
-treeSubstSchema :: Schema ->
-                   [[SofiaTree]] ->
-                   SofiaTree
-treeSubstSchema ms tss = head $ fst $ treesSubstPH (treesFromSchema ms) tss
-
-treeBuilder' :: String -> [String] -> SofiaTree
-treeBuilder' cs css = treeSubstSchema (schemaParse cs) (atomssParse css)
-
-treesSubstPH :: [SofiaTree] ->
-                [[SofiaTree]] ->
-                ([SofiaTree], [[SofiaTree]])
-treesSubstPH [] tss = ([], tss)
-treesSubstPH (t:ts') [] = ((t:ts'), [])
-treesSubstPH (t:ts') (ts:tss) =
-    if toType t /= Placeholder
-    then ((newSofiaTree (getSymbol t)
-                        (toType t)
-                        (subtree)) : rest_tree, rest_i)
-    else (ts ++ rest_tree, rest_i)
-       where
-        incr       = if toType t /= Placeholder then (ts:tss) else tss
-        recur      = treesSubstPH (getSubtrees t) incr
-        subtree    = fst recur
-        rest       = treesSubstPH ts' (snd recur)
-        rest_tree  = fst rest
-        rest_i     = snd rest
-
 --------------------------------------------------------------------------------
 
+-- placeholder pattern
 patternPH :: Pattern
 patternPH = patternAtomParse "[[]]" (-1)
 
-treeSubst :: SofiaTree ->
-             [[SofiaTree]] ->
+treeSubstPattern :: SofiaTree ->
+             [SofiaTree] ->
+             Pattern ->
              SofiaTree
-treeSubst t tss = head $ fst $ treesSubst [t] tss
+treeSubstPattern t ts p = head $ fst $ treesSubstPattern [t]
+                            (map getSubtrees ts) p
 
-treesSubst  :: [SofiaTree] ->
-                [[SofiaTree]] ->
-                ([SofiaTree], [[SofiaTree]])
-treesSubst [] tss = ([], tss)
-treesSubst (t:ts') [] = ((t:ts'), [])
-treesSubst (t:ts') (ts:tss) =
-    if matchesPattern patternPH t
+treesSubstPattern  ::  [SofiaTree] ->
+                       [[SofiaTree]] ->
+                       Pattern ->
+                       ([SofiaTree], [[SofiaTree]])
+treesSubstPattern []      tss      _ = ([], tss)
+treesSubstPattern (t:ts') []       _ = ((t:ts'), [])
+treesSubstPattern (t:ts') (ts:tss) p =
+    if matchesPattern p t
     then (ts ++ rest_tree, rest_i)
     else ((newSofiaTree (getSymbol t)
                         (toType t)
                         (subtree)) : rest_tree, rest_i)
        where
         incr       = if matchesPattern patternPH t then tss else (ts:tss)
-        recur      = treesSubst (getSubtrees t) incr
+        recur      = treesSubstPattern (getSubtrees t) incr p
         subtree    = fst recur
-        rest       = treesSubst ts' (snd recur)
+        rest       = treesSubstPattern ts' (snd recur) p
         rest_tree  = fst rest
         rest_i     = snd rest
 
-atomssParse :: [String] -> [[SofiaTree]]
-atomssParse css = [getSubtrees $ treeParse cs | cs <- css]
-
-treeBuilder :: String -> [String] -> SofiaTree
-treeBuilder cs css = treeSubst (treeParse cs) (atomssParse css)
+treeBuilder :: SofiaTree -> [SofiaTree] -> SofiaTree
+treeBuilder t ts = treeSubstPattern t ts patternPH
 
 axiomZero :: Postulate
 axiomZero =
@@ -377,14 +298,42 @@ axiomSucc =
                  "[[1+[n]]=[1+[m]]]:[[n]=[m]]]]")),
      "Arithmetic: Successor")
 
+tsRep :: String -> [SofiaTree]
+tsRep cs = [treeParse cs | i <- [1..]]
+
+-- TODO: check whether parameters are atoms
 axiomInduction :: String -> String -> String -> Postulate
 axiomInduction cs1 cs2 cs3 =
-    ((treeBuilder ("[ [[]] [[]] [[ [[]] ][[ [[]] ]nat] [[]] : [[]] ]:" ++
-                   "[[ [[]] ][[ [[]] ]nat]: [[]] ]]")
-                  [cs2, cs1, cs3, cs3, cs1, cs1, cs3, cs3, cs1]),
-     "Arithmetic: Induction on " ++ cs3 ++ " in " ++ cs2 ++ cs3)
+    (treeBuilder t ts,
+     "Arithmetic: Induction on " ++ cs3 ++ " in " ++ cs2 ++ cs1)
+       where
+        t    = treeParse ("[ [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:" ++
+                         "[ [[]] [ [[]] nat]: [[]] ]]")
+        t1   = treeParse cs1
+        t2   = treeParse cs2
+        t3   = treeParse cs3
+        pat  = patternFromTree t3 (-1)
+        zero = treeSubstPattern t1 (tsRep "[0[]]") pat
+        next = treeSubstPattern t1 (tsRep $ "[1+" ++ cs3 ++ "]") pat
+        ts   = [zero, t3, t3, t1, next, t3, t3, t1]
 
-axiomFalseUniv :: String -> String -> Postulate
+{-
+axiomInduction :: String -> String -> String -> Postulate
+axiomInduction cs1 cs2 cs3 =
+    ((treeBuilder ("[ [[]] [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:" ++
+                   "[ [[]] [ [[]] nat]: [[]] ]]")
+                  [cs2, cs1, cs3, cs3, cs1, cs1, cs3, cs3, cs1]),
+     "Arithmetic: Induction on " ++ cs3 ++ " in " ++ cs2 ++ cs1)
+    -}
+
+{-axiomTest :: String -> Postulate
+axiomTest cs1 =
+    ((treeBuilder ("[[]]")
+                  [cs1]),
+     "Test Axiom Builder")
+    -}
+
+{-axiomFalseUniv :: String -> String -> Postulate
 axiomFalseUniv cs1 cs2 =
     ((treeBuilder "[ [[]] [![]]: [[]] ]" [cs2, cs1]),
      "Boolean: False Universality")
@@ -393,6 +342,7 @@ axiomDoubleNeg :: String -> String -> Postulate
 axiomDoubleNeg cs1 cs2 =
     ((treeBuilder "[ [[]] [[ [[]] :[![]]]:[![]]]: [[]] ]" [cs2, cs1, cs1]),
      "Boolean: Double Negation")
+    -}
 
 -- $matchingexample
 -- We can now check whether a given `SofiaTree` is for example a variable.
@@ -1231,6 +1181,10 @@ ex10_5 = leftsub 4 1 [1..] 2 2 ex10_4
 ex10_6 = leftsub 4 2 [1..] 2 1 ex10_5
 ex10_7 = restate [(5,1),(6,1)] ["x"] ex10_6
 
+--
+-- "No self successor"
+ex11_1 = recall (axiomInduction "[[[n]=[1+[n]]]:[![]]]" "" "[n]") newProof
+
 -- >>> ex1_3
 -- ╔[X] /L1: assumption.
 -- ╚[[X]=[X]] /L2: self-equate from L1(1).
@@ -1273,3 +1227,103 @@ ex10_7 = restate [(5,1),(6,1)] ["x"] ex10_6
 -- [[y']num] /L5: left substitution, L4(2) in L1(2).
 -- [[x][[x]num]:[[[x]+[y']]=[x]]] /L6: left substitution, L4(2) in L2(1).
 -- [[y']num][[x][[x]num]:[[[x]+[y']]=[x]]] /L7: restatement (see lines [(5,1),(6,1)]).
+
+---------------------- EXPERIMENTAL/NOT NEEDED ---------------------------------
+-- The following code is redundant and not used in this project, but kept in
+-- this file in case snippets of the code are of use in future.
+
+type Schema = [(String, TypeOfNode, Int)]
+
+-- Gets a list of nodes corresponding to a (sub)tree from a list of nodes
+-- obtained by a preorder traversal with the information of how many subtrees
+-- each node has attached to each element (node) of the list.
+getSubtree :: [(a, b, Int)] -> [(a, b, Int)]
+getSubtree ((a, b, i):xs) = getSubtreeHelper [(a, b, i)] xs i
+
+getSubtreeHelper :: [(a, b, Int)] -> [(a, b, Int)] -> Int -> [(a, b, Int)]
+getSubtreeHelper xs _ 0 = xs 
+getSubtreeHelper xs [] _ = [] 
+getSubtreeHelper xs ((a, b, i):ys) i' =
+    getSubtreeHelper (xs ++ [(a, b, i)]) ys (i' + i - 1)
+
+-- Creates a tree from a list of nodes obtained by a preorder traversal (called
+-- a `Schema` here.
+treeFromSchema :: Schema -> SofiaTree
+treeFromSchema x = head $ treesFromSchema x
+
+treesFromSchema :: Schema -> [SofiaTree]
+treesFromSchema [] = []
+treesFromSchema ((cs, y, 0):[]) = [newSofiaTree cs y []]
+treesFromSchema ((cs, y, 0):xs) = [newSofiaTree cs y []] ++ (treesFromSchema xs)
+treesFromSchema ((cs, y, i):xs) =
+    [newSofiaTree cs y (treesFromSchema sub)] ++ (treesFromSchema rest)
+       where
+        sub  = tail $ getSubtree ((cs, y, i):xs)
+        rest = drop (length sub) xs
+
+-- Does a partial preorder traversal: The traversal does not explore subtrees
+-- whose root does not satisfy a filter condition.
+preorderPartial :: (SofiaTree -> b) ->
+                   (SofiaTree -> b) ->
+                   (SofiaTree -> Bool) ->
+                   SofiaTree ->
+                   [b]
+preorderPartial xf xf' f t =
+    if f t
+    then [xf' t]
+    else
+        if getSubtrees t == []
+        then [xf t]
+        else [xf t] ++ [x | t' <- (getSubtrees t),
+                            x <- preorderPartial xf xf' f t']
+
+typeOfTuple :: (String, TypeOfNode, Int) -> TypeOfNode
+typeOfTuple (_, y, _) = y
+
+-- Creates a `Schema` from a `SofiaTree`.
+schemaFromTree ::     SofiaTree    -- ^The `SofiaTree`.
+                    -> Schema      -- ^The resulting `Schema`.
+schemaFromTree t =
+    preorderPartial (\x -> (getSymbol x, toType x, length $ getSubtrees x))
+                    (\x -> ("", Placeholder, 0))
+                    (\x -> matchesPattern patternPH x) t
+
+schemaParse :: String -> Schema
+schemaParse cs = schemaFromTree $ treeParse cs
+
+-- Takes a `Schema` and a list of lists of atoms and builds a tree from the
+-- `Schema`, replacing all placeholders with the lists of atoms.
+treeSubstSchema :: Schema ->
+                   [[SofiaTree]] ->
+                   SofiaTree
+treeSubstSchema ms tss = head $ fst $ treesSubstPH (treesFromSchema ms) tss
+
+-- Takes a list of trees and and list of lists of atoms used to replace all
+-- `Placeholder`s in the trees of the first list.
+treesSubstPH :: [SofiaTree] ->
+                [[SofiaTree]] ->
+                ([SofiaTree], [[SofiaTree]])
+treesSubstPH [] tss = ([], tss)
+treesSubstPH (t:ts') [] = ((t:ts'), [])
+treesSubstPH (t:ts') (ts:tss) =
+    if toType t /= Placeholder
+    then ((newSofiaTree (getSymbol t)
+                        (toType t)
+                        (subtree)) : rest_tree, rest_i)
+    else (ts ++ rest_tree, rest_i)
+       where
+        incr       = if toType t /= Placeholder then (ts:tss) else tss
+        recur      = treesSubstPH (getSubtrees t) incr
+        subtree    = fst recur
+        rest       = treesSubstPH ts' (snd recur)
+        rest_tree  = fst rest
+        rest_i     = snd rest
+
+atomssParse :: [String] -> [[SofiaTree]]
+atomssParse css = [getSubtrees $ treeParse cs | cs <- css]
+
+-- Takes a `String` to create a `Schema` in which all placeholders will be
+-- replaced by the trees with string representations given by the second list.
+-- Returns the resulting `SofiaTree`.
+treeBuilder' :: String -> [String] -> SofiaTree
+treeBuilder' cs css = treeSubstSchema (schemaParse cs) (atomssParse css)
