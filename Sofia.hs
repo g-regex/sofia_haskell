@@ -317,22 +317,6 @@ axiomInduction cs1 cs2 cs3 =
         next = treeSubstPattern t1 (tsRep $ "[1+" ++ cs3 ++ "]") pat
         ts   = [zero, t3, t3, t1, next, t3, t3, t1]
 
-{-
-axiomInduction :: String -> String -> String -> Postulate
-axiomInduction cs1 cs2 cs3 =
-    ((treeBuilder ("[ [[]] [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:" ++
-                   "[ [[]] [ [[]] nat]: [[]] ]]")
-                  [cs2, cs1, cs3, cs3, cs1, cs1, cs3, cs3, cs1]),
-     "Arithmetic: Induction on " ++ cs3 ++ " in " ++ cs2 ++ cs1)
-    -}
-
-{-axiomTest :: String -> Postulate
-axiomTest cs1 =
-    ((treeBuilder ("[[]]")
-                  [cs1]),
-     "Test Axiom Builder")
-    -}
-
 {-axiomFalseUniv :: String -> String -> Postulate
 axiomFalseUniv cs1 cs2 =
     ((treeBuilder "[ [[]] [![]]: [[]] ]" [cs2, cs1]),
@@ -1184,6 +1168,15 @@ ex10_7 = restate [(5,1),(6,1)] ["x"] ex10_6
 --
 -- "No self successor"
 ex11_1 = recall (axiomInduction "[[[n]=[1+[n]]]:[![]]]" "" "[n]") newProof
+ex11_2 = assume "[[0[]]=[1+[0[]]]]" ex11_1
+ex11_3 = recall axiomZero ex11_2
+ex11_4 = apply 3 [(3,1)] 3 ex11_3
+ex11_5 = synapsis ex11_4
+ex11_6 = assume "[n][[n]nat][[[n]=[1+[n]]]:[![]]]" ex11_5
+ex11_7 = assume "[[1+[n']]=[1+[1+[n']]]]" ex11_6
+ex11_8 = recall axiomSucc ex11_7
+ex11_9 = apply 8 [(6,1)] 1 ex11_8
+ex11_10 = apply 9 [(9,1)] 1 ex11_9
 
 -- >>> ex1_3
 -- ╔[X] /L1: assumption.

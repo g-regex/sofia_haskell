@@ -29,7 +29,8 @@ option1 p =
        vs2 <- option p
        return (vs1 ++ vs2)
 
-legalSymbolChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['%',' ','+', '!']
+legalSymbolChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['%',' ','+', '!',
+                    '\'']
 
 isValidSymbol :: String -> Bool
 isValidSymbol cs = [c | c <- cs, not $ elem c legalSymbolChars] == []
