@@ -7,7 +7,7 @@ subset :: (Eq a) => [a] -> [a] -> Bool
 subset xs ys = (rmdups xs) == intersect [xs, ys]
 
 without :: (Eq a) => [a] -> [a] -> [a]
-without xs ys = [x | x <- xs, not (elem x ys)]
+without xs ys = rmdups [x | x <- xs, not (elem x ys)]
 
 getIndex :: Int -> [a] -> a
 getIndex i xs = head $ getSublistIndex i xs
