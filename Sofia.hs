@@ -253,39 +253,35 @@ isVar t =  matchesPattern patternVar t
 
 --------------------------------------------------------------------------------
 
--- placeholder pattern
-patternPH :: Pattern
-patternPH = patternAtomParse "[[]]" (-1)
+atomPH :: SofiaTree
+atomPH = head $ getSubtrees $ treeParse "[[]]"
 
 treeSubstPattern :: SofiaTree ->
              [SofiaTree] ->
-             Pattern ->
+             [SofiaTree] ->
              SofiaTree
-treeSubstPattern t ts p = head $ fst $ treesSubstPattern [t]
-                            (map getSubtrees ts) p
+treeSubstPattern t ts ts' = head $ fst $ treesSubstPattern [t]
+                            (map getSubtrees ts) ts'
 
 treesSubstPattern  ::  [SofiaTree] ->
                        [[SofiaTree]] ->
-                       Pattern ->
+                       [SofiaTree] ->
                        ([SofiaTree], [[SofiaTree]])
 treesSubstPattern []      tss      _ = ([], tss)
 treesSubstPattern (t:ts') []       _ = ((t:ts'), [])
-treesSubstPattern (t:ts') (ts:tss) p =
-    if matchesPattern p t
+treesSubstPattern (t:ts') (ts:tss) ts'' =
+    if elem t ts''
     then (ts ++ rest_tree, rest_i)
     else ((newSofiaTree (getSymbol t)
                         (toType t)
                         (subtree)) : rest_tree, rest_i)
        where
-        incr       = if matchesPattern patternPH t then tss else (ts:tss)
-        recur      = treesSubstPattern (getSubtrees t) incr p
+        incr       = if elem t ts'' then tss else (ts:tss)
+        recur      = treesSubstPattern (getSubtrees t) incr ts''
         subtree    = fst recur
-        rest       = treesSubstPattern ts' (snd recur) p
+        rest       = treesSubstPattern ts' (snd recur) ts''
         rest_tree  = fst rest
         rest_i     = snd rest
-
-treeBuilder :: SofiaTree -> [SofiaTree] -> SofiaTree
-treeBuilder t ts = treeSubstPattern t ts patternPH
 
 axiomZero :: Postulate
 axiomZero =
@@ -304,7 +300,7 @@ tsRep cs = [treeParse cs | i <- [1..]]
 -- TODO: check whether parameters are atoms
 axiomInduction :: String -> String -> String -> Postulate
 axiomInduction cs1 cs2 cs3 =
-    (treeBuilder t ts,
+    (treeSubstPattern t ts [atomPH], --patternPH,
      "Arithmetic: Induction on " ++ cs3 ++ " in " ++ cs2 ++ cs1)
        where
         t    = treeParse ("[ [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:" ++
@@ -312,9 +308,8 @@ axiomInduction cs1 cs2 cs3 =
         t1   = treeParse cs1
         t2   = treeParse cs2
         t3   = treeParse cs3
-        pat  = patternFromTree t3 (-1)
-        zero = treeSubstPattern t1 (tsRep "[0[]]") pat
-        next = treeSubstPattern t1 (tsRep $ "[1+" ++ cs3 ++ "]") pat
+        zero = treeSubstPattern t1 (tsRep "[0[]]") [t3]
+        next = treeSubstPattern t1 (tsRep $ "[1+" ++ cs3 ++ "]") [t3]
         ts   = [zero, t3, t3, t1, next, t3, t3, t1]
 
 {-axiomFalseUniv :: String -> String -> Postulate
@@ -1224,6 +1219,10 @@ ex11_10 = apply 9 [(9,1)] 1 ex11_9
 ---------------------- EXPERIMENTAL/NOT NEEDED ---------------------------------
 -- The following code is redundant and not used in this project, but kept in
 -- this file in case snippets of the code are of use in future.
+
+-- placeholder pattern
+patternPH :: Pattern
+patternPH = patternAtomParse "[[]]" (-1)
 
 type Schema = [(String, TypeOfNode, Int)]
 
