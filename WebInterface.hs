@@ -51,30 +51,47 @@ helpText = $(whamletFile "help.hamlet")
 
 postHomeR :: Handler Html
 postHomeR = do
-    hst <- runInputPost $ iopt textField "history"
-    msg <- runInputPost $ iopt textField "message"
+    pg   <- runInputPost $ iopt textField "page"
+    hst  <- runInputPost $ iopt textField "history"
+    msg  <- runInputPost $ iopt textField "message"
     let history = case hst of
             Nothing -> []
             Just h  -> unpack h
-    let errorSyntax = case msg of
-            Nothing -> []
-            Just m  -> validateSyntax $ unpack m
     let message = case msg of
             Nothing -> []
             Just m  -> unpack m
+    let oldpage = case pg of
+            Nothing -> []
+            Just p  -> unpack p
+    let newpage = case message of
+            ":help" -> "help"
+            ":db"   -> "db"
+            _       -> ""
+    let page = if newpage == []
+               then
+                    if oldpage == []
+                    then "help"
+                    else oldpage
+               else newpage
+    let command = case newpage of
+            []  -> message
+            _   -> []
+    let errorSyntax = if command == []
+                      then []
+                      else validateSyntax command
     let historylist = case history == [] of
             True  -> []
             False -> (Data.List.Split.splitOn ";" history)
     let oldproof = evalList historylist
-    let errorSemantics = if and [errorSyntax == [], message /= []]
-                         then validateSemantics message oldproof
+    let errorSemantics = if and [errorSyntax == [], command /= []]
+                         then validateSemantics command oldproof
                          else []
     let errorMsgs = errorSyntax ++ errorSemantics
-    let newhistory = if or [errorMsgs /= [], message == []]
+    let newhistory = if or [errorMsgs /= [], command == []]
                      then history
                      else
-                        if history == [] then message
-                        else (history ++ ";" ++ message)
+                        if history == [] then command
+                        else (history ++ ";" ++ command)
     let newhistorylist = case newhistory == [] of
             True  -> []
             False -> (Data.List.Split.splitOn ";" newhistory)
@@ -100,9 +117,13 @@ postHomeR = do
              <br>
           <td #info valign="top" width="50%">
            <div .inside>
-            ^{helpText}
+            $if page == "help"
+                ^{helpText}
+            $else
+                Here will be a table.
       <br>
       <div #cmd>
+         <input type=hidden name=page value=#{page}>
          <input #prompt type=text name=message
             placeholder="Type Command ..." size="80" autofocus>
      |] 
