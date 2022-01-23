@@ -297,6 +297,46 @@ axiomSucc =
 tsRep :: String -> [SofiaTree]
 tsRep cs = [treeParse cs | i <- [1..]]
 
+tsfRep :: String -> [AxiomSchema]
+tsfRep cs = [Final (treeParse cs) | i <- [1..]]
+
+                         --original  pattern    substitutions
+data AxiomSchema = Replace SofiaTree SofiaTree [AxiomSchema] | Final SofiaTree
+
+axiomBuilder :: AxiomSchema -> SofiaTree
+axiomBuilder (Final t)            = t
+axiomBuilder (Replace t t' axs)   = treeSubstPattern t ts [t'] -- TODO: allow for 
+     where                                                     -- more than one t'
+      ts = [axiomBuilder ax | ax <- axs]
+
+axiomInduction2 :: String -> String -> String -> Postulate
+axiomInduction2 cs1 cs2 cs3 =
+    (axiomBuilder ax,
+     "Arithmetic: Induction on " ++ cs3 ++ " in " ++ cs2 ++ cs1)
+       where
+        t    = treeParse ("[ [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:" ++
+                          "[ [[]] [ [[]] nat]: [[]] ]]")
+        t1   = treeParse cs1
+        t2   = treeParse cs2
+        t3   = treeParse cs3
+        t4   = treeParse "[0[]]"
+        t5   = treeParse "[1+[[]]]"
+        ax   = Replace t atomPH
+                [
+                Replace t1 t3 (tsfRep "[0[]]"),
+                Final t3,
+                Final t3,
+                Final t1,
+                Replace t1 t3
+                  [
+                  Replace t5 atomPH [Final t3]
+                  ],
+                Final t3,
+                Final t3,
+                Final t1
+                ]
+
+
 -- TODO: check whether parameters are atoms
 axiomInduction :: String -> String -> String -> Postulate
 axiomInduction cs1 cs2 cs3 =
@@ -1162,7 +1202,7 @@ ex10_7 = restate [(5,1),(6,1)] ["x"] ex10_6
 
 --
 -- "No self successor"
-ex11_1 = recall (axiomInduction "[[[n]=[1+[n]]]:[![]]]" "" "[n]") newProof
+ex11_1 = recall (axiomInduction2 "[[[n]=[1+[n]]]:[![]]]" "" "[n]") newProof
 ex11_2 = assume "[[0[]]=[1+[0[]]]]" ex11_1
 ex11_3 = recall axiomZero ex11_2
 ex11_4 = apply 3 [(3,1)] 3 ex11_3
