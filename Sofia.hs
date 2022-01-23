@@ -85,6 +85,7 @@ module Sofia (
 
 --------------------------- Using Graham Hutton's code -------------------------
 import SofiaParser
+import SofiaAxiomParser
 import SofiaTree
 import ListHelpers
 --------------------------------------------------------------------------------
@@ -294,48 +295,49 @@ axiomSucc =
                  "[[1+[n]]=[1+[m]]]:[[n]=[m]]]]")),
      "Arithmetic: Successor")
 
-                         --original  pattern        substitutions
-data AxiomSchema = ReplaceString String Int [AxiomSchema] |
-                   ReplaceAll Int Int AxiomSchema |
-                   FinalString String |
-                   Final Int
-
 axiomBuilder :: AxiomSchema -> [SofiaTree] -> SofiaTree
 axiomBuilder (Final i) ts     = getIndex i ts
 axiomBuilder (FinalString cs) ts     = treeParse cs
 axiomBuilder (ReplaceAll i i' ax) ts  =
-    treeSubstPattern (getIndex i ts) ts' sub                 -- TODO: allow for 
-     where                                                   -- more than one t'
+    treeSubstPattern (getIndex i ts) ts' sub
+     where
       ts' = [axiomBuilder ax ts | i <- [1..]]
       sub = if i' == 0 then [atomPH] else [(getIndex i' ts)]
 axiomBuilder (ReplaceString cs i axs) ts =
-    treeSubstPattern (treeParse cs) ts' sub                  -- TODO: allow for 
-     where                                                   -- more than one t'
+    treeSubstPattern (treeParse cs) ts' sub
+     where
       ts' = [axiomBuilder ax ts | ax <- axs]
       sub = if i == 0 then [atomPH] else [(getIndex i ts)]
 
+axiomBuilderWrapper :: AxiomSchema -> [String] -> SofiaTree
+axiomBuilderWrapper ax css = axiomBuilder  ax (map treeParse css)
+
 -- TODO: check whether parameters are atoms
+--  error checking
 axiomInduction :: [String] -> Postulate
 axiomInduction css =
-    (axiomBuilder ax (map treeParse css),
-     "Arithmetic: Induction on " ++ (getIndex 3 css) ++ " in " ++
-        (getIndex 2 css) ++ (getIndex 1 css))
-       where
-        ax    = ReplaceString ("[ [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:" ++
-                               "[ [[]] [ [[]] nat]: [[]] ]]") 0
-                [
-                ReplaceAll 1 3 (FinalString "[0[]]"),
-                Final 3,
-                Final 3,
-                Final 1,
-                ReplaceAll 1 3
-                  (
-                  ReplaceString "[1+[[]]]" 0 [Final 3]
-                  ),
-                Final 3,
-                Final 3,
-                Final 1
-                ]
+  (axiomBuilderWrapper ax css, "Arithmetic: Induction on " ++
+                               (getIndex 3 css) ++ " in " ++
+                               (getIndex 2 css) ++ (getIndex 1 css) )
+  where
+   ax = axiomParse
+    ("{\"[ [[]] [             [[]] [ [[]] nat] [[]] : [[]] ]:[                        [[]] [ [[]] nat]: [[]] ]]\", 0, " ++
+     "   [ {1, 3, \"[0[]]\"}, 3,     3,        1,     {1, 3, {\"[1+[[]]]\", 0, [3]}}, 3,     3,         1             ]}")
+   {-ax    = ReplaceString ("[ [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:" ++
+                          "[ [[]] [ [[]] nat]: [[]] ]]") 0
+           [
+           ReplaceAll 1 3 (FinalString "[0[]]"),
+           Final 3,
+           Final 3,
+           Final 1,
+           ReplaceAll 1 3
+             (
+             ReplaceString "[1+[[]]]" 0 [Final 3]
+             ),
+           Final 3,
+           Final 3,
+           Final 1
+           ]-}
 
 {-axiomFalseUniv :: String -> String -> Postulate
 axiomFalseUniv cs1 cs2 =
