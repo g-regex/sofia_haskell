@@ -294,63 +294,48 @@ axiomSucc =
                  "[[1+[n]]=[1+[m]]]:[[n]=[m]]]]")),
      "Arithmetic: Successor")
 
-tsRep :: String -> [SofiaTree]
-tsRep cs = [treeParse cs | i <- [1..]]
+                         --original  pattern        substitutions
+data AxiomSchema = ReplaceString String Int [AxiomSchema] |
+                   ReplaceAll Int Int AxiomSchema |
+                   FinalString String |
+                   Final Int
 
-tsfRep :: String -> [AxiomSchema]
-tsfRep cs = [Final (treeParse cs) | i <- [1..]]
-
-                         --original  pattern    substitutions
-data AxiomSchema = Replace SofiaTree SofiaTree [AxiomSchema] | Final SofiaTree
-
-axiomBuilder :: AxiomSchema -> SofiaTree
-axiomBuilder (Final t)            = t
-axiomBuilder (Replace t t' axs)   = treeSubstPattern t ts [t'] -- TODO: allow for 
-     where                                                     -- more than one t'
-      ts = [axiomBuilder ax | ax <- axs]
-
-axiomInduction2 :: String -> String -> String -> Postulate
-axiomInduction2 cs1 cs2 cs3 =
-    (axiomBuilder ax,
-     "Arithmetic: Induction on " ++ cs3 ++ " in " ++ cs2 ++ cs1)
-       where
-        t    = treeParse ("[ [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:" ++
-                          "[ [[]] [ [[]] nat]: [[]] ]]")
-        t1   = treeParse cs1
-        t2   = treeParse cs2
-        t3   = treeParse cs3
-        t4   = treeParse "[0[]]"
-        t5   = treeParse "[1+[[]]]"
-        ax   = Replace t atomPH
-                [
-                Replace t1 t3 (tsfRep "[0[]]"),
-                Final t3,
-                Final t3,
-                Final t1,
-                Replace t1 t3
-                  [
-                  Replace t5 atomPH [Final t3]
-                  ],
-                Final t3,
-                Final t3,
-                Final t1
-                ]
-
+axiomBuilder :: AxiomSchema -> [SofiaTree] -> SofiaTree
+axiomBuilder (Final i) ts     = getIndex i ts
+axiomBuilder (FinalString cs) ts     = treeParse cs
+axiomBuilder (ReplaceAll i i' ax) ts  =
+    treeSubstPattern (getIndex i ts) ts' sub                 -- TODO: allow for 
+     where                                                   -- more than one t'
+      ts' = [axiomBuilder ax ts | i <- [1..]]
+      sub = if i' == 0 then [atomPH] else [(getIndex i' ts)]
+axiomBuilder (ReplaceString cs i axs) ts =
+    treeSubstPattern (treeParse cs) ts' sub                  -- TODO: allow for 
+     where                                                   -- more than one t'
+      ts' = [axiomBuilder ax ts | ax <- axs]
+      sub = if i == 0 then [atomPH] else [(getIndex i ts)]
 
 -- TODO: check whether parameters are atoms
-axiomInduction :: String -> String -> String -> Postulate
-axiomInduction cs1 cs2 cs3 =
-    (treeSubstPattern t ts [atomPH], --patternPH,
-     "Arithmetic: Induction on " ++ cs3 ++ " in " ++ cs2 ++ cs1)
+axiomInduction :: [String] -> Postulate
+axiomInduction css =
+    (axiomBuilder ax (map treeParse css),
+     "Arithmetic: Induction on " ++ (getIndex 3 css) ++ " in " ++
+        (getIndex 2 css) ++ (getIndex 1 css))
        where
-        t    = treeParse ("[ [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:" ++
-                         "[ [[]] [ [[]] nat]: [[]] ]]")
-        t1   = treeParse cs1
-        t2   = treeParse cs2
-        t3   = treeParse cs3
-        zero = treeSubstPattern t1 (tsRep "[0[]]") [t3]
-        next = treeSubstPattern t1 (tsRep $ "[1+" ++ cs3 ++ "]") [t3]
-        ts   = [zero, t3, t3, t1, next, t3, t3, t1]
+        ax    = ReplaceString ("[ [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:" ++
+                               "[ [[]] [ [[]] nat]: [[]] ]]") 0
+                [
+                ReplaceAll 1 3 (FinalString "[0[]]"),
+                Final 3,
+                Final 3,
+                Final 1,
+                ReplaceAll 1 3
+                  (
+                  ReplaceString "[1+[[]]]" 0 [Final 3]
+                  ),
+                Final 3,
+                Final 3,
+                Final 1
+                ]
 
 {-axiomFalseUniv :: String -> String -> Postulate
 axiomFalseUniv cs1 cs2 =
@@ -1202,7 +1187,7 @@ ex10_7 = restate [(5,1),(6,1)] ["x"] ex10_6
 
 --
 -- "No self successor"
-ex11_1 = recall (axiomInduction2 "[[[n]=[1+[n]]]:[![]]]" "" "[n]") newProof
+ex11_1 = recall (axiomInduction ["[[[n]=[1+[n]]]:[![]]]", "", "[n]"]) newProof
 ex11_2 = assume "[[0[]]=[1+[0[]]]]" ex11_1
 ex11_3 = recall axiomZero ex11_2
 ex11_4 = apply 3 [(3,1)] 3 ex11_3
