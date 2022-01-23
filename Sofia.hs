@@ -339,6 +339,15 @@ axiomInduction css =
            Final 1
            ]-}
 
+axiomRestComp :: [String] -> Postulate
+axiomRestComp css =
+  (axiomBuilderWrapper ax css, "Set: Restricted Comprehension on " ++
+                               (getIndex 5 css) )
+  where
+   ax = axiomParse
+    ("{\"[ [[]] :[ [[]] : [[]] [ [[]] :[ [ [[]] in [[]] ] =[[]:[ [[]] in [[]] ] [[]] ]]]]]\", 0, " ++
+     "   [ 2,      5,     4,     3,        3,      4,            3,      5,     1        ]}")
+
 {-axiomFalseUniv :: String -> String -> Postulate
 axiomFalseUniv cs1 cs2 =
     ((treeBuilder "[ [[]] [![]]: [[]] ]" [cs2, cs1]),

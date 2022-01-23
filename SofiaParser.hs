@@ -62,16 +62,27 @@ sFormulator =
 
 sAtom :: Parser SofiaTree
 sAtom =
-    do specialChar '['
+    do many (specialChar ' ')  
+       specialChar '['
+       many (specialChar ' ')
        x <- sFormula
+       many (specialChar ' ')
        specialChar ']'
+       many (specialChar ' ')
        return (newSofiaTree "" Atom [x])
-      <|> do specialChar '['
+      <|> do many (specialChar ' ')
+             specialChar '['
+             many (specialChar ' ')
              x <- sStatement
+             many (specialChar ' ')
              specialChar ']'
+             many (specialChar ' ')
              return (newSofiaTree "" Atom [x])
-      <|> do specialChar '['
+      <|> do many (specialChar ' ')
+             specialChar '['
+             many (specialChar ' ')
              specialChar ']'
+             many (specialChar ' ')
              return (newSofiaTree "" Atom [])
 
 sStatement :: Parser SofiaTree
