@@ -14,6 +14,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 import Yesod
+import Yesod.Core.Types
+import GHC.Int
 import Database.Persist.Sqlite
 import Control.Monad.Trans.Resource (runResourceT)
 import Control.Monad.Logger (runStderrLoggingT)
@@ -79,12 +81,27 @@ strProoflines p = case p of
 
 helpText = $(whamletFile "help.hamlet")
 
+axEmpty = AxiomBuilder "" "" 0 ""
+
+{-dbTranslate :: String -> String
+dbTranslate cs =
+    if validateSyntax sRecallRaw cs == []
+    then "recall " ++ (axiomBuilderSchema axiom)
+    else cs
+    where
+        args   = recallRawParse cs
+        axiomH = runDB $ get (toSqlKey 1 :: (Key AxiomBuilder))
+        axiom  = case axiomH of
+                    HandlerFor Nothing -> axEmpty
+                    HandlerFor (Just ax) -> ax-}
+
 postHomeR :: Handler Html
 postHomeR = do
     pg   <- runInputPost $ iopt textField "page"
     hst  <- runInputPost $ iopt textField "history"
     msg  <- runInputPost $ iopt textField "message"
     theory <- runDB $ selectList [AxiomBuilderParams >. 0] []
+    -- axiom  <- runDB $ get (toSqlKey 1 :: (Key AxiomBuilder))
     let history = case hst of
             Nothing -> []
             Just h  -> unpack h
@@ -94,22 +111,30 @@ postHomeR = do
     let oldpage = case pg of
             Nothing -> []
             Just p  -> unpack p
-    let newpage = case message of
+    let newpage = case message of       -- defining navigation commands
             ":help" -> "help"
             ":db"   -> "db"
             _       -> ""
     let page = if newpage == []
                then
                     if oldpage == []
-                    then "help"
+                    then "help"         -- default page
                     else oldpage
                else newpage
-    let command = case newpage of
+    let isRecall = validateSyntax sRecallRaw message == []
+    let recall = if isRecall
+                 then recallRawParse message
+                 else (0, [])
+    axiom  <- runDB $ get (toSqlKey
+                           (read $ show $ fst recall :: GHC.Int.Int64) -- ugly
+                           :: (Key AxiomBuilder)
+                          )
+    let command = case newpage of       -- only process non-navigation cmds
             []  -> message
             _   -> []
     let errorSyntax = if command == []
                       then []
-                      else validateSyntax command
+                      else validateSyntax sCommand command
     let historylist = case history == [] of
             True  -> []
             False -> (Data.List.Split.splitOn ";" history)
@@ -131,6 +156,8 @@ postHomeR = do
     let valid    = errorMsgs == []
     defaultLayout
      [whamlet|
+     $maybe ax <- axiom
+        #{axiomBuilderName ax}
      <form method=post action=@{HomeR}>
       <table width="100%" cellspacing="0" border="1" #tbl>
          <tr .row>

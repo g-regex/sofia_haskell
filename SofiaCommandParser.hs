@@ -13,7 +13,8 @@ The parser for commands of the Sofia proof assistant.
 -}
 
 module SofiaCommandParser (commandParse, evalList, validateSyntax,
-        validateSemantics, sValidation) where
+        validateSemantics, sValidation, sCommand, sRecallRaw,
+        recallRawParse) where
 
 import Parsing
 import Sofia
@@ -150,6 +151,12 @@ sCommand = do many (specialChar ' ')
               many (specialChar ' ')
               return (commandFromDedRule x)
 
+sRecallRaw :: Parser (Int, [String])
+sRecallRaw = do sWord "recall"
+                i  <- sInt
+                css <- sList sString
+                return (i, css)
+
 sValidation :: Proof -> Parser [String]
 sValidation p = do
               many (specialChar ' ')
@@ -185,6 +192,9 @@ validationFromDedRule dr p = showErrors validation
 commandParse :: String -> (Proof -> Proof)
 commandParse x = fst $ head $ parse sCommand x
 
+recallRawParse :: String -> (Int, [String])
+recallRawParse x = fst $ head $ parse sRecallRaw x
+
 listParse :: [String] -> [(Proof -> Proof)]
 listParse x = map commandParse x
 
@@ -195,11 +205,11 @@ evalPList p (pp:pps) = evalPList (pp p) pps
 evalList :: [String] -> Proof
 evalList css = evalPList newProof (listParse css)
 
-validateSyntax :: String -> [String]
-validateSyntax cs = if correctSyntax then []
+validateSyntax :: Parser a -> String -> [String]
+validateSyntax psr cs = if correctSyntax then []
                  else ["Syntax error in command."]
     where
-     parsed = parse sCommand cs
+     parsed = parse psr cs
      correctSyntax = and [length (parsed) == 1,
                       (length $ snd $ head $ parsed) == 0]
 
