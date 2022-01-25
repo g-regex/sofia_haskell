@@ -27,9 +27,11 @@ import           SofiaAxiomParser
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 AxiomBuilder
-    name   String
-    schema String
-    params Int
+    name      String
+    schema    String
+    params    Int
+    desc      String
+    AxiomName name
     deriving Show
 |]
 
@@ -38,12 +40,16 @@ runSqlite' = runSqlite
 
 main :: IO ()
 main = runSqlite' "theory.db" $ do
-    --runMigration migrateAll
-    {-t <- insert $ AxiomBuilder "Restricted Comprehension"
+    {-runMigration migrateAll
+    t <- insert $ AxiomBuilder "Restricted Comprehension"
                           ("{\"[ [[]] :[ [[]] : [[]] [ [[]] :[ [ [[]] in [[]] ] =[[]:[ [[]] in [[]] ] [[]] ]]]]]\", 0, " ++
                            "   [ 2,      5,     4,     3,        3,      4,            3,      5,     1        ]}")
-                          5 -}
-    {-insert $ AxiomBuilder "Induction" ("{\"[ [[]] [             [[]] [ [[]] nat] [[]] : [[]] ]:[                        [[]] [ [[]] nat]: [[]] ]]\", 0, " ++
-     "   [ {1, 3, \"[0[]]\"}, 3,     3,        1,     {1, 3, {\"[1+[[]]]\", 0, [3]}}, 3,     3,         1             ]}") 3-}
+                          5
+                          ""
+    insert $ AxiomBuilder "Induction"
+        ("{\"[ [[]] [             [[]] [ [[]] nat] [[]] : [[]] ]:[                        [[]] [ [[]] nat]: [[]] ]]\", 0, " ++
+     "   [ {1, 3, \"[0[]]\"}, 3,     3,        1,     {1, 3, {\"[1+[[]]]\", 0, [3]}}, 3,     3,         1             ]}")
+        3
+        "" -- -}
     axiom_builders <- selectList [AxiomBuilderParams >. 0] []
     liftIO $ print $ Prelude.map axiomBuilderSchema $ Prelude.map entityVal axiom_builders

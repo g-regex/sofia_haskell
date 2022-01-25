@@ -1,17 +1,40 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE EmptyDataDecls             #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE ViewPatterns               #-}
+
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 import Yesod
+import Database.Persist.Sqlite
+import Control.Monad.Trans.Resource (runResourceT)
+import Control.Monad.Logger (runStderrLoggingT)
+
 import Data.Text
 import Data.List.Split
 import Text.Lucius (CssUrl, luciusFile, luciusFileReload, renderCss)
 import SofiaCommandParser
 import SofiaTree
 
-data App = App
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+AxiomBuilder
+    name      String
+    schema    String
+    params    Int
+    desc      String
+    AxiomName name
+    deriving Show
+|]
+
+data App = App ConnectionPool
 
 mkYesod "App" [parseRoutes|
 /            HomeR       GET POST
@@ -37,6 +60,13 @@ instance Yesod App where
 instance RenderMessage App FormMessage where
     renderMessage _ _ = defaultFormMessage
 
+instance YesodPersist App where
+    type YesodPersistBackend App = SqlBackend
+
+    runDB action = do
+        App pool <- getYesod
+        runSqlPool action pool
+
 getHomeR :: Handler Html
 getHomeR = postHomeR
 
@@ -54,6 +84,7 @@ postHomeR = do
     pg   <- runInputPost $ iopt textField "page"
     hst  <- runInputPost $ iopt textField "history"
     msg  <- runInputPost $ iopt textField "message"
+    theory <- runDB $ selectList [AxiomBuilderParams >. 0] []
     let history = case hst of
             Nothing -> []
             Just h  -> unpack h
@@ -120,7 +151,18 @@ postHomeR = do
             $if page == "help"
                 ^{helpText}
             $else
-                Here will be a table.
+                <table>
+                    <tr>
+                     <td>ID
+                     <td>Name
+                     <td>Params
+                     <td>Description
+                    $forall Entity id axiom_builder <- theory
+                        <tr>
+                            <td>#{fromSqlKey id}
+                            <td>#{axiomBuilderName axiom_builder}
+                            <td>#{axiomBuilderParams axiom_builder}
+                            <td>#{axiomBuilderDesc axiom_builder}
       <br>
       <div #cmd>
          <input type=hidden name=page value=#{page}>
@@ -128,5 +170,10 @@ postHomeR = do
             placeholder="Type Command ..." size="80" autofocus>
      |] 
 
+openConnectionCount :: Int
+openConnectionCount = 10
+
 main :: IO ()
-main = warp 3000 App
+main = runStderrLoggingT $ withSqlitePool "theory.db" openConnectionCount
+    $ \pool -> liftIO $ do
+        warp 3000 $ App pool
