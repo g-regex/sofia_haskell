@@ -6,8 +6,8 @@ body {
 }
 #mainBox {
   border-radius: 25px;
-  padding: 20px;
-  margin: 20px;
+  padding: 10px;
+  margin: 0px;
 }
 
 .column {
@@ -77,4 +77,9 @@ code {
 var {
   font-style: normal;
   color: #C8567F;
+}
+
+kbd {
+  font-style: normal;
+  color: #007FFF;
 }

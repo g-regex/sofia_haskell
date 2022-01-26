@@ -73,6 +73,8 @@ module Sofia (
     showErrors,
     ErrorCodes,
     validateAssume,
+    validateRecall,
+    validateAxiomParams,
     validateSelfequate,
     validateRestate,
     validateSynapsis,
@@ -253,37 +255,6 @@ isVar :: SofiaTree -> Bool
 isVar t =  matchesPattern patternVar t
 
 --------------------------------------------------------------------------------
-
-atomPH :: SofiaTree
-atomPH = head $ getSubtrees $ treeParse "[[]]"
-
-treeSubstPattern :: SofiaTree ->
-             [SofiaTree] ->
-             [SofiaTree] ->
-             SofiaTree
-treeSubstPattern t ts ts' = head $ fst $ treesSubstPattern [t]
-                            (map getSubtrees ts) ts'
-
-treesSubstPattern  ::  [SofiaTree] ->
-                       [[SofiaTree]] ->
-                       [SofiaTree] ->
-                       ([SofiaTree], [[SofiaTree]])
-treesSubstPattern []      tss      _ = ([], tss)
-treesSubstPattern (t:ts') []       _ = ((t:ts'), [])
-treesSubstPattern (t:ts') (ts:tss) ts'' =
-    if elem t ts''
-    then (ts ++ rest_tree, rest_i)
-    else ((newSofiaTree (getSymbol t)
-                        (toType t)
-                        (subtree)) : rest_tree, rest_i)
-       where
-        incr       = if elem t ts'' then tss else (ts:tss)
-        recur      = treesSubstPattern (getSubtrees t) incr ts''
-        subtree    = fst recur
-        rest       = treesSubstPattern ts' (snd recur) ts''
-        rest_tree  = fst rest
-        rest_i     = snd rest
-
 axiomZero :: Postulate
 axiomZero =
     ((treeParse "[0[]][[0[]]nat][[n][[n]nat][[0[]]=[1+[n]]]:[![]]]"),
@@ -295,34 +266,17 @@ axiomSucc =
                  "[[1+[n]]=[1+[m]]]:[[n]=[m]]]]")),
      "Arithmetic: Successor")
 
-axiomBuilder :: AxiomSchema -> [SofiaTree] -> SofiaTree
-axiomBuilder (Final i) ts     = getIndex i ts
-axiomBuilder (FinalString cs) ts     = treeParse cs
-axiomBuilder (ReplaceAll i i' ax) ts  =
-    treeSubstPattern (getIndex i ts) ts' sub
-     where
-      ts' = [axiomBuilder ax ts | i <- [1..]]
-      sub = if i' == 0 then [atomPH] else [(getIndex i' ts)]
-axiomBuilder (ReplaceString cs i axs) ts =
-    treeSubstPattern (treeParse cs) ts' sub
-     where
-      ts' = [axiomBuilder ax ts | ax <- axs]
-      sub = if i == 0 then [atomPH] else [(getIndex i ts)]
-
-axiomBuilderWrapper :: AxiomSchema -> [String] -> SofiaTree
-axiomBuilderWrapper ax css = axiomBuilder  ax (map treeParse css)
-
 -- TODO: check whether parameters are atoms
 --  error checking
 axiomInduction :: [String] -> Postulate
 axiomInduction css =
-  (axiomBuilderWrapper ax css, "Arithmetic: Induction on " ++
+  (axiomBuild ax css, "Arithmetic: Induction on " ++
                                (getIndex 3 css) ++ " in " ++
                                (getIndex 2 css) ++ (getIndex 1 css) )
   where
    ax = axiomParse
-    ("{\"[ [[]] [             [[]] [ [[]] nat] [[]] : [[]] ]:[                        [[]] [ [[]] nat]: [[]] ]]\", 0, " ++
-     "   [ {1, 3, \"[0[]]\"}, 3,     3,        1,     {1, 3, {\"[1+[[]]]\", 0, [3]}}, 3,     3,         1             ]}")
+    ("{`[ [[]] [             [[]] [ [[]] nat] [[]] : [[]] ]:[                        [[]] [ [[]] nat]: [[]] ]]`, 0, " ++
+     "   [ {1, 3, `[0[]]`}, 3,     3,        1,     {1, 3, {`[1+[[]]]`, 0, [3]}}, 3,     3,         1             ]}")
    {-ax    = ReplaceString ("[ [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:" ++
                           "[ [[]] [ [[]] nat]: [[]] ]]") 0
            [
@@ -341,11 +295,11 @@ axiomInduction css =
 
 axiomRestComp :: [String] -> Postulate
 axiomRestComp css =
-  (axiomBuilderWrapper ax css, "Set: Restricted Comprehension on " ++
+  (axiomBuild ax css, "Set: Restricted Comprehension on " ++
                                (getIndex 5 css) )
   where
    ax = axiomParse
-    ("{\"[ [[]] :[ [[]] : [[]] [ [[]] :[ [ [[]] in [[]] ] =[[]:[ [[]] in [[]] ] [[]] ]]]]]\", 0, " ++
+    ("{`[ [[]] :[ [[]] : [[]] [ [[]] :[ [ [[]] in [[]] ] =[[]:[ [[]] in [[]] ] [[]] ]]]]]`, 0, " ++
      "   [ 2,      5,     4,     3,        3,      4,            3,      5,     1        ]}")
 
 {-axiomFalseUniv :: String -> String -> Postulate
@@ -851,6 +805,7 @@ showErrors ecs = [showErr ec | ec <- ecs]
                 "\" is not an equality."
         9  -> "Cannot perform synapsis on empty proof."
         10 -> "Cannot perform synapsis at depth 0."
+        11 -> "One of the provided parameters is not a statement."
 
 type ErrorCodes = [(Int, String)]
 
@@ -874,6 +829,17 @@ validateAssume cs = if t == treeErr then [(2, "")] else
                         if matchesPattern patternStmt t
                             then [] else [(3, "")]
                         where t = treeParse cs
+
+validateRecall :: SofiaTree -> ErrorCodes
+validateRecall t = if t == treeErr then [(2, "")] else
+                        if matchesPattern patternStmt t
+                            then [] else [(3, "")]
+
+validateAxiomParams :: [String] -> ErrorCodes
+validateAxiomParams css =
+    if and $ map (matchesPattern patternStmt) $ map treeParse css
+    then []
+    else [(11, "")]
 
 validateSelfequate :: (Int, Int) -> Proof -> ErrorCodes
 validateSelfequate ii p = validateIndices [ii] p
@@ -944,14 +910,15 @@ recall ::        (SofiaTree, String)    -- ^The ordered pair previously
               -> Proof        -- ^The `Proof` to which the generated `ProofLine`
                               --  should be appended to.
               -> Proof        -- ^The resulting `Proof`.
-recall tcs p = p <+> l
+recall tcs p = if valid then p <+> l else p
    where
+    valid = validateRecall t' == []
     p' = toListFromProof p
     l = toProofFromList [newLine
          (1 + numCurLn p')              -- increase line number
          (numCurDepth p')               -- keep depth
          t'
-         (Recall (snd tcs))]
+         (Recall (t', snd tcs))]
     t' = treeAutoSubstSymbols p' (fst tcs) False  -- substitute reserved variable
                                             -- names
 

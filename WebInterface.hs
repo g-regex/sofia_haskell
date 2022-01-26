@@ -24,7 +24,9 @@ import Data.Text
 import Data.List.Split
 import Text.Lucius (CssUrl, luciusFile, luciusFileReload, renderCss)
 import SofiaCommandParser
+import SofiaAxiomParser
 import SofiaTree
+import Sofia -- for validateAxiomParams
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 AxiomBuilder
@@ -112,9 +114,9 @@ postHomeR = do
             Nothing -> []
             Just p  -> unpack p
     let newpage = case message of       -- defining navigation commands
-            ":help" -> "help"
-            ":db"   -> "db"
-            _       -> ""
+            ":help"   -> "help"
+            ":theory" -> "theory"
+            _         -> ""
     let page = if newpage == []
                then
                     if oldpage == []
@@ -125,12 +127,33 @@ postHomeR = do
     let recall = if isRecall
                  then recallRawParse message
                  else (0, [])
-    axiom  <- runDB $ get (toSqlKey
-                           (read $ show $ fst recall :: GHC.Int.Int64) -- ugly
-                           :: (Key AxiomBuilder)
-                          )
+    axiom <- runDB $ get (toSqlKey
+                          (read $ show $ fst recall :: GHC.Int.Int64) -- ugly
+                          :: (Key AxiomBuilder)
+                         )
+    let dbError = case axiom of
+            Nothing -> ["Axiom not found in theory database."]
+            Just ax ->  if params == Prelude.length (snd recall)
+                        then showErrors $ validateAxiomParams $ snd recall
+                        else ["Incorrect number of parameters."]
+                        where
+                            params = axiomBuilderParams ax
+    let recallcmd = case axiom of
+            Nothing -> []
+            Just ax -> if dbError == []
+                       then "recall (\"" ++ show result ++ "\",\"" ++ axName
+                         ++ "\")"
+                       else []
+                       where 
+                           strSchema = axiomBuilderSchema ax
+                           schema    = axiomParse strSchema
+                           args      = snd recall
+                           axName    = axiomBuilderName ax
+                           result    = axiomBuild schema args
     let command = case newpage of       -- only process non-navigation cmds
-            []  -> message
+            []  -> if isRecall
+                   then recallcmd
+                   else message
             _   -> []
     let errorSyntax = if command == []
                       then []
@@ -139,8 +162,12 @@ postHomeR = do
             True  -> []
             False -> (Data.List.Split.splitOn ";" history)
     let oldproof = evalList historylist
-    let errorSemantics = if and [errorSyntax == [], command /= []]
-                         then validateSemantics command oldproof
+    let errorSemantics = if and [errorSyntax == [],
+                                 or [command /= [], isRecall]]
+                         then 
+                            if isRecall 
+                            then dbError
+                            else validateSemantics command oldproof
                          else []
     let errorMsgs = errorSyntax ++ errorSemantics
     let newhistory = if or [errorMsgs /= [], command == []]
@@ -156,8 +183,6 @@ postHomeR = do
     let valid    = errorMsgs == []
     defaultLayout
      [whamlet|
-     $maybe ax <- axiom
-        #{axiomBuilderName ax}
      <form method=post action=@{HomeR}>
       <table width="100%" cellspacing="0" border="1" #tbl>
          <tr .row>
@@ -178,6 +203,7 @@ postHomeR = do
             $if page == "help"
                 ^{helpText}
             $else
+                Type <code><kbd>:help</kbd></code> to get help.<br><br>
                 <table>
                     <tr>
                      <td>ID
@@ -186,10 +212,10 @@ postHomeR = do
                      <td>Description
                     $forall Entity id axiom_builder <- theory
                         <tr>
-                            <td>#{fromSqlKey id}
-                            <td>#{axiomBuilderName axiom_builder}
-                            <td>#{axiomBuilderParams axiom_builder}
-                            <td>#{axiomBuilderDesc axiom_builder}
+                            <td valign="top">#{fromSqlKey id}
+                            <td valign="top">#{axiomBuilderName axiom_builder}
+                            <td valign="top">#{axiomBuilderParams axiom_builder}
+                            <td valign="top">#{axiomBuilderDesc axiom_builder}
       <br>
       <div #cmd>
          <input type=hidden name=page value=#{page}>

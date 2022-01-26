@@ -1,5 +1,9 @@
 Available commands:
  <ul>
+  <li><code><kbd>:help</kbd></code><br>
+    Shows this help.
+  <li><code><kbd>:theory</kbd></code><br>
+    Shows a table of the theory database.
   <li><code>assume <var>String</var></code><br>
     (e.g. <code>assume "[x]"</code>)<br>
     Parameters:

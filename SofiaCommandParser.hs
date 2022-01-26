@@ -19,6 +19,7 @@ module SofiaCommandParser (commandParse, evalList, validateSyntax,
 import Parsing
 import Sofia
 import SofiaTree
+import SofiaParser
 import ListHelpers
 
 -- parses a list of similar tokens zero or more times (behaves like curly
@@ -66,13 +67,13 @@ sInt =
        many (specialChar ' ')
        return (read (x:xs) :: Int)
 
-sPair :: Parser (Int, Int)
-sPair =
+sPair :: (Parser a, Parser b) -> Parser (a, b)
+sPair (p1, p2) =
     do many (specialChar ' ')
        specialChar '('
-       x  <- sInt
+       x  <- p1
        specialChar ','
-       y <- sInt
+       y <- p2
        specialChar ')'
        many (specialChar ' ')
        return (x,y)
@@ -92,9 +93,6 @@ sList p =
              many (specialChar ' ')
              return (x:xs)
 
-sPairList :: Parser [(Int, Int)]
-sPairList = sList sPair
-
 sIntList :: Parser [Int]
 sIntList = sList sInt
 
@@ -105,7 +103,7 @@ sAssume = do sWord "assume"
 
 sRestate :: Parser (DeductionRule)
 sRestate = do sWord "restate"
-              pl  <- sList sPair
+              pl  <- sList (sPair (sInt, sInt))
               css <- sList sString
               return (Restate pl css)
 
@@ -117,13 +115,13 @@ sSynapsis = do sWord "synapsis"
 sApply :: Parser (DeductionRule)
 sApply = do sWord "apply"
             x  <- sInt
-            pl <- sList sPair
+            pl <- sList (sPair (sInt, sInt))
             y  <- sInt
             return (Apply x pl y)
 
 sSelfequate :: Parser (DeductionRule)
 sSelfequate = do sWord "selfequate"
-                 p <- sPair
+                 p <- sPair (sInt, sInt)
                  return (Selfequate p)
 
 sRightSub :: Parser (DeductionRule)
@@ -144,10 +142,15 @@ sLeftSub  = do sWord "leftsub"
                y' <- sInt
                return (LeftSub x y pl x' y')
 
+sRecall :: Parser (DeductionRule)
+sRecall  = do sWord "recall"
+              (x, y)  <- sPair (sString, sString)
+              return (Recall ((treeParse x), y))
+
 sCommand :: Parser (Proof -> Proof)
 sCommand = do many (specialChar ' ')
               x <- (sAssume <|> sRestate <|> sSynapsis <|> sApply <|> sRightSub
-                   <|> sLeftSub <|> sSelfequate)
+                   <|> sLeftSub <|> sSelfequate <|> sRecall)
               many (specialChar ' ')
               return (commandFromDedRule x)
 
@@ -161,7 +164,7 @@ sValidation :: Proof -> Parser [String]
 sValidation p = do
               many (specialChar ' ')
               x <- (sAssume <|> sRestate <|> sSynapsis <|> sApply <|> sRightSub
-                   <|> sLeftSub <|> sSelfequate)
+                   <|> sLeftSub <|> sSelfequate <|> sRecall)
               many (specialChar ' ')
               return (validationFromDedRule x p)
 
@@ -175,6 +178,7 @@ commandFromDedRule dr = case dr of
     Apply a xs b        -> apply a xs b
     RightSub a c xs b d -> rightsub a c xs b d
     LeftSub  a c xs b d -> leftsub a c xs b d
+    Recall (a, b)       -> recall (a, b)
 
 -- TODO recall
 validationFromDedRule :: DeductionRule -> Proof -> [String]
@@ -188,6 +192,7 @@ validationFromDedRule dr p = showErrors validation
         Apply a xs b        -> validateApply a xs b p
         RightSub a c xs b d -> validateSubst a c b d p
         LeftSub  a c xs b d -> validateSubst a c b d p
+        Recall (a, b)       -> validateRecall a
 
 commandParse :: String -> (Proof -> Proof)
 commandParse x = fst $ head $ parse sCommand x

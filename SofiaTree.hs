@@ -103,7 +103,7 @@ data DeductionRule = Assumption String | Selfequate (Int, Int)
                      | Synapsis Int Int | Apply Int [(Int, Int)] Int
                      | RightSub Int Int [Int] Int Int
                      | LeftSub  Int Int [Int] Int Int
-                     | Recall String
+                     | Recall (SofiaTree, String)
                      deriving (Eq -- ^`DeductionRule` is a derived instance
                                   --  of the `Eq` class.
                               )
@@ -126,7 +126,7 @@ instance Show (DeductionRule) where
     show (LeftSub a c xs b d)  = "left substitution, L" ++ (show a) ++ "(" ++
                                 (show b) ++ ") in L" ++ (show c) ++ "(" ++
                                 (show d) ++ ")."
-    show (Recall a)            = "recalling " ++ (show a) ++ "."
+    show (Recall (a, b))       = "recalling " ++ (show b) ++ "."
 
 -- |A `SofiaTree` is a `Tree` containing a parsed Sofia string. Each 'Node'
 -- of such a 'Tree' contains a list of 'Char's (only non-empty, if the
