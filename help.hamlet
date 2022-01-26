@@ -9,6 +9,12 @@ Available commands:
     Parameters:
     <ul>
         <li>A Sofia expression.
+  <li><code>recall <var>Int</var> <var>[String]</var></code><br>
+    (e.g. <code>recall 1 ["[a]", "[b]"]</code>)<br>
+    Parameters:
+    <ul>
+        <li>The ID of the proposition or axiom builder to be recalled.
+        <li>The paramters required by the axiom builder.
   <li><code>selfequate <var>(Int, Int)</var></code><br>
     (e.g. <code>selfequate (1,1)</code>)<br>
     Parameters:

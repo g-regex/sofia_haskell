@@ -255,10 +255,17 @@ isVar :: SofiaTree -> Bool
 isVar t =  matchesPattern patternVar t
 
 --------------------------------------------------------------------------------
-axiomZero :: Postulate
+{-axiomZero :: Postulate
 axiomZero =
     ((treeParse "[0[]][[0[]]nat][[n][[n]nat][[0[]]=[1+[n]]]:[![]]]"),
-     "Arithmetic: Zero")
+     "Arithmetic: Zero")-}
+
+axiomZero :: Postulate
+axiomZero =
+  (axiomBuild ax [], "Arithmetic: Zero")
+  where
+   ax = axiomParse
+    ("{`[0[]][[0[]]nat][[n][[n]nat][[0[]]=[1+[n]]]:[![]]]`, 0, []}")
 
 axiomSucc :: Postulate
 axiomSucc =

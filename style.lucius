@@ -1,27 +1,56 @@
+html {
+  height: 95%;
+  margin: 0px;
+}
 body {
   font-family: Arial;
   background: #181a1b;
   color: white;
   font-size: 12pt;
+  height: 100%;
+  margin: 0px;
 }
 #mainBox {
   border-radius: 25px;
   padding: 10px;
   margin: 0px;
+  height: 100%;
+}
+
+#theform {
+  height: 100%;
 }
 
 .column {
   float: left;
+  height: 100%;
   width: 50%;
   flex: 1;
 }
 
 .row {
-  margin: 10px;
+  height: 100%;
+}
+
+#outertable {
+  height: 100%;
+}
+
+#outertabletoptr {
+  height: 80%;
+}
+
+#outertabletoptd {
+  height: 100%;
 }
 
 #tbl {
   border: 0px;
+  height: 100%;
+}
+
+tbody {
+  height: 80%;
 }
 
 #proof {
@@ -29,6 +58,7 @@ body {
   border-top-left-radius: 25px;
   border-bottom-left-radius: 25px;
   background: #3e4446;
+  height: 100%;
 }
 
 #info {
@@ -36,10 +66,23 @@ body {
   border-top-right-radius: 25px;
   border-bottom-right-radius: 25px;
   background: #35393b;
+  height: 100%;
 }
 
-.inside {
-  margin: 20px;
+.inside1 {
+  margin: 0px;
+  padding: 20px;
+  box-sizing: border-box;
+  height: 100%;
+}
+
+.inside2 {
+  margin: 0px;
+  padding: 00px;
+  box-sizing: border-box;
+  height: 100%;
+  overflow: auto;
+  #border: 1px solid yellow;
 }
 
 #cmd {
@@ -82,4 +125,29 @@ var {
 kbd {
   font-style: normal;
   color: #007FFF;
+}
+
+#theory {
+  font-family: Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+#theory td, #theory th {
+  border: 0px;
+  padding: 8px;
+}
+
+#theory tr:nth-child(even){background-color: #393939;}
+#theory tr:nth-child(odd){background-color: #4C4C4C;}
+
+#theory tr:hover {background-color: #272727;}
+
+#theory th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: #252525;
+  color: white;
+  border-bottom: 2px solid grey;
 }

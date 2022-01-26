@@ -13,8 +13,8 @@ The parser for commands of the Sofia proof assistant.
 -}
 
 module SofiaCommandParser (commandParse, evalList, validateSyntax,
-        validateSemantics, sValidation, sCommand, sRecallRaw,
-        recallRawParse) where
+        validateSemantics, sValidation, sCommand, sDesc, sRecallRaw,
+        recallRawParse, descParse) where
 
 import Parsing
 import Sofia
@@ -160,6 +160,31 @@ sRecallRaw = do sWord "recall"
                 css <- sList sString
                 return (i, css)
 
+sNoBrackets :: Parser Char
+sNoBrackets = do x <- sat (\x -> not (elem x ['[', ']']))
+                 return x
+
+sBrackets :: Parser String
+sBrackets = do specialChar '['
+               xs <- many sNoBrackets
+               ys <- option (do xs' <- sBrackets
+                                ys' <- many sNoBrackets
+                                return (xs' ++ ys'))
+               specialChar ']'
+               return ("[" ++ xs ++ ys ++ "]")
+
+sDescPair :: Parser (String, String)
+sDescPair = do x <- sNoBrackets
+               xs <- many sNoBrackets
+               ys <- option sBrackets
+               return (x:xs, ys)
+             <|> do ys <- sBrackets
+                    return ("", ys)
+
+sDesc :: Parser [(String, String)]
+sDesc = do xs <- many sDescPair
+           return xs
+
 sValidation :: Proof -> Parser [String]
 sValidation p = do
               many (specialChar ' ')
@@ -199,6 +224,9 @@ commandParse x = fst $ head $ parse sCommand x
 
 recallRawParse :: String -> (Int, [String])
 recallRawParse x = fst $ head $ parse sRecallRaw x
+
+descParse :: String -> [(String, String)]
+descParse x = fst $ head $ parse sDesc x
 
 listParse :: [String] -> [(Proof -> Proof)]
 listParse x = map commandParse x

@@ -102,7 +102,7 @@ postHomeR = do
     pg   <- runInputPost $ iopt textField "page"
     hst  <- runInputPost $ iopt textField "history"
     msg  <- runInputPost $ iopt textField "message"
-    theory <- runDB $ selectList [AxiomBuilderParams >. 0] []
+    theory <- runDB $ selectList [] []
     -- axiom  <- runDB $ get (toSqlKey 1 :: (Key AxiomBuilder))
     let history = case hst of
             Nothing -> []
@@ -183,44 +183,62 @@ postHomeR = do
     let valid    = errorMsgs == []
     defaultLayout
      [whamlet|
-     <form method=post action=@{HomeR}>
-      <table width="100%" cellspacing="0" border="1" #tbl>
-         <tr .row>
-          <td #proof valign="top" width="50%">
-           <div .inside>
-                 $if or [newhistory /= [], not valid]
-                     $forall line <- lines
-                         #{line}<br>
-                     <input type=hidden name=history
-                        value="#{pack newhistory}">
-                     $forall line <- Prelude.map pack errorMsgs
-                         <b>Error: #{line}<br>
-                 $else
-                     Hello! You can start creating a proof.
-             <br>
-          <td #info valign="top" width="50%">
-           <div .inside>
-            $if page == "help"
-                ^{helpText}
-            $else
-                Type <code><kbd>:help</kbd></code> to get help.<br><br>
-                <table>
-                    <tr>
-                     <td>ID
-                     <td>Name
-                     <td>Params
-                     <td>Description
-                    $forall Entity id axiom_builder <- theory
+     <form #theform method=post action=@{HomeR}>
+      <table width="100%" cellspacing="10" border="0" #outertable>
+       <tbody>
+        <tr #outertabletoptr>
+         <td #outertabletoptd>
+          <table width="100%" cellspacing="0" border="1" #tbl>
+           <tbody>
+            <tr .row>
+             <td #proof valign="top" width="50%">
+              <div .inside1>
+               <div .inside2>
+                    $if or [newhistory /= [], not valid]
+                        $forall line <- lines
+                            #{line}<br>
+                        <input type=hidden name=history
+                           value="#{pack newhistory}">
+                        $forall line <- Prelude.map pack errorMsgs
+                            <b>Error: #{line}<br>
+                    $else
+                        Hello! You can start creating a proof.
+                <br>
+             <td #info valign="top" width="50%">
+              <div .inside1>
+               <div .inside2>
+                $if page == "help"
+                    ^{helpText}
+                $else
+                    Type <code><kbd>:help</kbd></code> to get help.<br><br>
+                    <table #theory>
                         <tr>
-                            <td valign="top">#{fromSqlKey id}
-                            <td valign="top">#{axiomBuilderName axiom_builder}
-                            <td valign="top">#{axiomBuilderParams axiom_builder}
-                            <td valign="top">#{axiomBuilderDesc axiom_builder}
-      <br>
-      <div #cmd>
-         <input type=hidden name=page value=#{page}>
-         <input #prompt type=text name=message
-            placeholder="Type Command ..." size="80" autofocus>
+                         <th>ID
+                         <th>Name
+                         <th>Params
+                         <th>Description
+                        $forall Entity id ab <- theory
+                            <tr>
+                                <td valign="top">#{fromSqlKey id}
+                                <td valign="top">
+                                    #{axiomBuilderName ab}
+                                <td valign="top">
+                                    #{axiomBuilderParams ab}
+                                <td valign="top">
+                                  $if validateSyntax sDesc (axiomBuilderDesc ab) == []
+                                   $forall d <- descParse (axiomBuilderDesc ab)
+                                    $if snd d /= ""
+                                        #{fst d}<code>#{snd d}</code>
+                                    $else 
+                                        #{fst d}
+                                  $else
+                                    #{axiomBuilderDesc ab}
+        <tr #outertablebottom>
+         <td>
+          <div #cmd>
+             <input type=hidden name=page value=#{page}>
+             <input #prompt type=text name=message
+                placeholder="Type Command ..." size="80" autofocus>
      |] 
 
 openConnectionCount :: Int
