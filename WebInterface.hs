@@ -130,8 +130,8 @@ postHomeR = do
                             then mainHandler history ["Proof not long enough."]
                                              "" oldpage
                             else do
-                                let lines = linesFromHist historylist
-                                if (numDepth $ Prelude.last lines) /= 0
+                                let pLines = linesFromHist historylist
+                                if (numDepth $ Prelude.last pLines) /= 0
                                 then mainHandler
                                              history
                                              ["Not at depth 0."]
@@ -143,7 +143,7 @@ postHomeR = do
                                     axiom <- runDB $ getBy (Axiom "User" newName)
                                     case axiom of
                                         Nothing -> do
-                                            let prop = propFromLines lines
+                                            let prop = propFromLines pLines
                                             runDB $ insert $
                                               AxiomBuilder "User"
                                                            newName
@@ -192,6 +192,102 @@ postHomeR = do
                              hpop = join ";" $ pop historylist
                         _  -> mainHandler history [] message oldpage
                 _  -> mainHandler history [] message oldpage
+
+tableView newhistory valid pLines page theory errorMsgs =
+    defaultLayout
+     [whamlet|
+     <form #theform method=post action=@{HomeR}>
+      <table width="100%" cellspacing="10" border="0" #outertable>
+       <tbody>
+        <tr #outertabletoptr>
+         <td #outertabletoptd>
+          <table width="100%" cellspacing="0" border="1" #tbl>
+           <tbody>
+            <tr .row>
+             <td #proof valign="top" width="50%">
+              ^{proofWidget newhistory valid pLines errorMsgs}
+             <td #info valign="top" width="50%">
+              ^{infoWidget page theory}
+        <tr #outertablebottom>
+         <td>
+          <div #cmd>
+             <input #prompt type=text name=message
+                placeholder="Type Command ..." size="80" autofocus>
+     |]
+
+divView newhistory valid pLines page theory errorMsgs =
+    defaultLayout
+     [whamlet|
+     <form #theform method=post action=@{HomeR}>
+      <div #tablediv>
+         <div #proof .tddiv>
+          ^{proofWidget newhistory valid pLines errorMsgs}
+         <div #info .tddiv>
+          ^{infoWidget page theory}
+      <br>
+      <div #cmd>
+         <input #prompt type=text name=message
+            placeholder="Type Command ..." size="80" autofocus>
+     |]
+
+proofWidget newhistory valid pLines errorMsgs=
+    [whamlet|
+      <div .inside1>
+       <div .inside2>
+            $if or [newhistory /= [], not valid]
+                $forall line <- pLines
+                    #{line}<br>
+                <input type=hidden name=history
+                   value="#{pack newhistory}">
+                $forall line <- Prelude.map pack errorMsgs
+                    <b>Error: #{line}<br>
+            $else
+                Hello! You can start creating a proof.
+    |]
+
+infoWidget page theory =
+     [whamlet|
+      <div .inside1>
+       <div .inside2>
+        <input type=hidden name=page value=#{page}>
+        $if page == "help"
+            ^{helpText}
+        $else
+            Type <code><kbd>:help</kbd></code> to get help.<br><br>
+            <table #theory>
+                <tr>
+                 <th>ID
+                 <th>Name
+                 <th>Params
+                 <th>Description
+                $forall Entity id ab <- theory
+                    <tr>
+                        <td valign="top">#{fromSqlKey id}
+                        <td valign="top">
+                            $if axiomBuilderRubric ab == ""
+                                #{axiomBuilderName ab}
+                            $else
+                                #{axiomBuilderRubric ab}:
+                                #{axiomBuilderName ab}
+                        <td valign="top">
+                            #{axiomBuilderParams ab}
+                        <td valign="top">
+                         $if axiomBuilderRubric ab == "Example"
+                          Type
+                          <code>
+                           <kbd>:load
+                           #{fromSqlKey id} 
+                          to load this example.<br><br>
+                         $else
+                          $if validateSyntax sDesc (axiomBuilderDesc ab) == []
+                           $forall d <- descParse (axiomBuilderDesc ab)
+                            $if snd d /= ""
+                                #{fst d}<code>#{snd d}</code>
+                            $else 
+                                #{fst d}
+                          $else
+                            #{axiomBuilderDesc ab}
+     |]
 
 mainHandler :: String -> [String] -> String -> String -> Handler Html
 mainHandler history errorMeta message page = do
@@ -251,79 +347,10 @@ mainHandler history errorMeta message page = do
             True  -> []
             False -> (Data.List.Split.splitOn ";" newhistory)
     let proof    = evalList newhistorylist
-    let lines    = strProoflines proof
+    let pLines    = strProoflines proof
     let valid    = errorMsgs == []
-    defaultLayout
-     [whamlet|
-     <form #theform method=post action=@{HomeR}>
-      <table width="100%" cellspacing="10" border="0" #outertable>
-       <tbody>
-        <tr #outertabletoptr>
-         <td #outertabletoptd>
-          <table width="100%" cellspacing="0" border="1" #tbl>
-           <tbody>
-            <tr .row>
-             <td #proof valign="top" width="50%">
-              <div .inside1>
-               <div .inside2>
-                    $if or [newhistory /= [], not valid]
-                        $forall line <- lines
-                            #{line}<br>
-                        <input type=hidden name=history
-                           value="#{pack newhistory}">
-                        $forall line <- Prelude.map pack errorMsgs
-                            <b>Error: #{line}<br>
-                    $else
-                        Hello! You can start creating a proof.
-                <br>
-             <td #info valign="top" width="50%">
-              <div .inside1>
-               <div .inside2>
-                $if page == "help"
-                    ^{helpText}
-                $else
-                    Type <code><kbd>:help</kbd></code> to get help.<br><br>
-                    <table #theory>
-                        <tr>
-                         <th>ID
-                         <th>Name
-                         <th>Params
-                         <th>Description
-                        $forall Entity id ab <- theory
-                            <tr>
-                                <td valign="top">#{fromSqlKey id}
-                                <td valign="top">
-                                    $if axiomBuilderRubric ab == ""
-                                        #{axiomBuilderName ab}
-                                    $else
-                                        #{axiomBuilderRubric ab}:
-                                        #{axiomBuilderName ab}
-                                <td valign="top">
-                                    #{axiomBuilderParams ab}
-                                <td valign="top">
-                                 $if axiomBuilderRubric ab == "Example"
-                                  Type
-                                  <code>
-                                   <kbd>:load
-                                   #{fromSqlKey id} 
-                                  to load this example.<br><br>
-                                 $else
-                                  $if validateSyntax sDesc (axiomBuilderDesc ab) == []
-                                   $forall d <- descParse (axiomBuilderDesc ab)
-                                    $if snd d /= ""
-                                        #{fst d}<code>#{snd d}</code>
-                                    $else 
-                                        #{fst d}
-                                  $else
-                                    #{axiomBuilderDesc ab}
-        <tr #outertablebottom>
-         <td>
-          <div #cmd>
-             <input type=hidden name=page value=#{page}>
-             <input #prompt type=text name=message
-                placeholder="Type Command ..." size="80" autofocus>
-     |] 
-
+    divView newhistory valid pLines page theory errorMsgs
+ 
 openConnectionCount :: Int
 openConnectionCount = 10
 

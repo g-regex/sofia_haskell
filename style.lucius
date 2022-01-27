@@ -19,9 +19,17 @@ body {
 
 #theform {
   height: 100%;
+  width: 100%;
 }
 
 .column {
+  float: left;
+  height: 100%;
+  width: 50%;
+  flex: 1;
+}
+
+.tddiv {
   float: left;
   height: 100%;
   width: 50%;
@@ -34,14 +42,39 @@ body {
 
 #outertable {
   height: 100%;
+  width: 100%;
+}
+
+#tablediv {
+  height: 90%;
+  width: 100%;
+  display: flex;
+  flex-direction : row;
 }
 
 #outertabletoptr {
   height: 80%;
 }
 
+#trdiv {
+}
+
+#outertabletoptrdiv {
+  height: 80%;
+}
+
+#outertablebottomtrdiv {
+}
+
 #outertabletoptd {
   height: 100%;
+}
+
+#outertabletoptddiv {
+  height: 100%;
+}
+
+#outertablebottomtddiv {
 }
 
 #tbl {
@@ -150,4 +183,25 @@ kbd {
   background-color: #252525;
   color: white;
   border-bottom: 2px solid grey;
+}
+
+/* Works on Firefox */
+* {
+  scrollbar-width: normal;
+  scrollbar-color: #252525 #3e4446;
+}
+
+/* Works on Chrome, Edge, and Safari */
+*::-webkit-scrollbar {
+  width: 12px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #3e4446;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #252525;
+  border-radius: 20px;
+  border: 3px solid #3e4446;
 }
