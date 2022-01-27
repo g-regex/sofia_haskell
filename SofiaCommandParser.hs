@@ -95,6 +95,16 @@ sList p =
 
 sIntList :: Parser [Int]
 sIntList = sList sInt
+          <|> do many (specialChar ' ')
+                 specialChar '['
+                 many (specialChar ' ')
+                 i <- sInt
+                 many (specialChar ' ')
+                 sWord ".."
+                 many (specialChar ' ')
+                 specialChar ']'
+                 many (specialChar ' ')
+                 return [i..]
 
 sAssume :: Parser DeductionRule
 sAssume = do sWord "assume"
@@ -128,7 +138,7 @@ sRightSub :: Parser (DeductionRule)
 sRightSub = do sWord "rightsub"
                x  <- sInt
                y  <- sInt
-               pl <- sList sInt
+               pl <- sIntList
                x' <- sInt
                y' <- sInt
                return (RightSub x y pl x' y')
@@ -137,7 +147,7 @@ sLeftSub :: Parser (DeductionRule)
 sLeftSub  = do sWord "leftsub"
                x  <- sInt
                y  <- sInt
-               pl <- sList sInt
+               pl <- sIntList
                x' <- sInt
                y' <- sInt
                return (LeftSub x y pl x' y')
