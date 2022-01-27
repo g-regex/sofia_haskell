@@ -30,11 +30,12 @@ import Sofia -- for validateAxiomParams
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 AxiomBuilder
+    rubric    String
     name      String
     schema    String
     params    Int
     desc      String
-    AxiomName name
+    Axiom     rubric name
     deriving Show
 |]
 
@@ -83,7 +84,7 @@ strProoflines p = case p of
 
 helpText = $(whamletFile "help.hamlet")
 
-axEmpty = AxiomBuilder "" "" 0 ""
+axEmpty = AxiomBuilder "" "" "" 0 ""
 
 {-dbTranslate :: String -> String
 dbTranslate cs =
@@ -148,7 +149,8 @@ postHomeR = do
                            strSchema = axiomBuilderSchema ax
                            schema    = axiomParse strSchema
                            args      = snd recall
-                           axName    = axiomBuilderName ax
+                           axName    = axiomBuilderRubric ax ++ ": " ++
+                                        axiomBuilderName ax
                            result    = axiomBuild schema args
     let command = case newpage of       -- only process non-navigation cmds
             []  -> if isRecall
@@ -221,7 +223,11 @@ postHomeR = do
                             <tr>
                                 <td valign="top">#{fromSqlKey id}
                                 <td valign="top">
-                                    #{axiomBuilderName ab}
+                                    $if axiomBuilderRubric ab == ""
+                                        #{axiomBuilderName ab}
+                                    $else
+                                        #{axiomBuilderRubric ab}:
+                                        #{axiomBuilderName ab}
                                 <td valign="top">
                                     #{axiomBuilderParams ab}
                                 <td valign="top">
