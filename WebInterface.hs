@@ -27,6 +27,7 @@ import SofiaCommandParser
 import SofiaAxiomParser
 import SofiaTree
 import Parsing
+import ListHelpers
 import Sofia -- for validateAxiomParams
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
@@ -36,6 +37,7 @@ AxiomBuilder
     schema    String
     params    Int
     desc      String
+    hist      String
     Axiom     rubric name
     deriving Show
 |]
@@ -91,7 +93,7 @@ linesFromHist :: [String] -> [ProofLine]
 linesFromHist hist = toListFromProof $ evalList hist
 
 propFromLines :: [ProofLine] -> (String, String)
-propFromLines pl = ("{`" ++ pstr ++ "`, 0, []}", "Proposition: " ++ pstr)
+propFromLines pl = ("{`" ++ pstr ++ "`, 0, []}", "Postulate: " ++ pstr)
     where
         t     = treeFromLn $ Prelude.head pl
         t'    = treeFromLn $ Prelude.last pl
@@ -148,6 +150,7 @@ postHomeR = do
                                                            (fst prop)
                                                            0
                                                            (snd prop)
+                                                           history
                                             mainHandler history [] "" oldpage
                                         _       ->
                                             mainHandler
@@ -155,8 +158,38 @@ postHomeR = do
                                               ["Name not available"]
                                               ""
                                               oldpage
+                        "load"    -> do
+                                    let index = read (Prelude.head $ snd $ fst $
+                                            Prelude.head metaParse) ::
+                                            GHC.Int.Int64
+                                    axiom <- runDB $ get (toSqlKey index ::
+                                            (Key AxiomBuilder))
+                                    case axiom of
+                                        Nothing ->
+                                            mainHandler
+                                              history
+                                              ["Entry not found in database."]
+                                              ""
+                                              oldpage
+                                        Just ax -> do
+                                            let loadhist = axiomBuilderHist ax
+                                            if loadhist == ""
+                                            then mainHandler
+                                                  history
+                                                  ["No history for this entry."]
+                                                  ""
+                                                  oldpage
+                                            else mainHandler
+                                                  loadhist
+                                                  []
+                                                  ""
+                                                  oldpage
                         "help"    -> mainHandler history [] "" "help"
                         "theory"  -> mainHandler history [] "" "theory"
+                        "new"     -> mainHandler "" [] "" oldpage
+                        "back"    -> mainHandler hpop [] "" oldpage
+                            where
+                             hpop = join ";" $ pop historylist
                         _  -> mainHandler history [] message oldpage
                 _  -> mainHandler history [] message oldpage
 
@@ -268,6 +301,13 @@ mainHandler history errorMeta message page = do
                                 <td valign="top">
                                     #{axiomBuilderParams ab}
                                 <td valign="top">
+                                 $if axiomBuilderRubric ab == "Example"
+                                  Type
+                                  <code>
+                                   <kbd>:load
+                                   #{fromSqlKey id} 
+                                  to load this example.<br><br>
+                                 $else
                                   $if validateSyntax sDesc (axiomBuilderDesc ab) == []
                                    $forall d <- descParse (axiomBuilderDesc ab)
                                     $if snd d /= ""

@@ -30,3 +30,10 @@ decreasingSublist toOrd (pl:pls) =
 rmdups :: Eq a => [a] -> [a]
 rmdups [] = []
 rmdups (x:xs) = x:rmdups (filter (/= x) xs)
+
+pop :: [a] -> [a]
+pop [] = []
+pop xs = init xs
+
+-- https://stackoverflow.com/questions/9220986/is-there-any-haskell-function-to-concatenate-list-with-separator
+join sep xs = foldr (\a b-> a ++ if b=="" then b else sep ++ b) "" xs

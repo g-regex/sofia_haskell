@@ -33,7 +33,7 @@ option1 p =
        return (vs1 ++ vs2)
 
 legalChars = ['[', ']'] ++ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++
-             ['%',' ','+', '!', ':', '=']
+             ['%',' ','+', '!', ':', '=', '\'']
 
 sCharacter :: Parser Char
 sCharacter = sat (\x -> elem x legalChars)
@@ -165,12 +165,23 @@ sMetaPost = do cs <- sWord "postulate"
                cs' <- sString
                return (cs, [cs'])
 
+sMetaLoad :: Parser (String, [String])
+sMetaLoad = do cs <- sWord "load"
+               i  <- sInt
+               return (cs, [show i])
+
 sMeta :: Parser (String, [String])
 sMeta =    do cs <- sWord "help"
               return (cs, [])
             <|> do cs <- sWord "theory"
                    return (cs, [])
+            <|> do cs <- sWord "new"
+                   return (cs, [])
+            <|> do cs <- sWord "back"
+                   return (cs, [])
             <|> do x <- sMetaPost
+                   return x
+            <|> do x <- sMetaLoad
                    return x
 
 sNoBrackets :: Parser Char

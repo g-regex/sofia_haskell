@@ -743,7 +743,7 @@ treeDeduceAPPLY :: [ProofLine] ->
 treeDeduceAPPLY p rs t =
     if subset (atomsConditions t') (atomsScope p)
     then treesImplied t'
-    else newSofiaTree "" Error []
+    else treeTRUTH
        where
         t' = treeSubstTree rs t [1..]
 
