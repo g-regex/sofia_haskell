@@ -14,7 +14,7 @@ The parser for commands of the Sofia proof assistant.
 
 module SofiaCommandParser (commandParse, evalList, validateSyntax,
         validateSemantics, sValidation, sCommand, sDesc, sRecallRaw,
-        recallRawParse, descParse) where
+        recallRawParse, descParse, sMeta, parsingErrors) where
 
 import Parsing
 import Sofia
@@ -160,6 +160,19 @@ sRecallRaw = do sWord "recall"
                 css <- sList sString
                 return (i, css)
 
+sMetaPost :: Parser (String, [String])
+sMetaPost = do cs <- sWord "postulate"
+               cs' <- sString
+               return (cs, [cs'])
+
+sMeta :: Parser (String, [String])
+sMeta =    do cs <- sWord "help"
+              return (cs, [])
+            <|> do cs <- sWord "theory"
+                   return (cs, [])
+            <|> do x <- sMetaPost
+                   return x
+
 sNoBrackets :: Parser Char
 sNoBrackets = do x <- sat (\x -> not (elem x ['[', ']']))
                  return x
@@ -237,6 +250,13 @@ evalPList p (pp:pps) = evalPList (pp p) pps
 
 evalList :: [String] -> Proof
 evalList css = evalPList newProof (listParse css)
+
+parsingErrors :: [(a, String)] -> [String]
+parsingErrors parsed = if correctSyntax then []
+                 else ["Syntax error in command."]
+    where
+     correctSyntax = and [length (parsed) == 1,
+                      (length $ snd $ head $ parsed) == 0]
 
 validateSyntax :: Parser a -> String -> [String]
 validateSyntax psr cs = if correctSyntax then []

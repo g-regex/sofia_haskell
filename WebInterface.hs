@@ -26,6 +26,7 @@ import Text.Lucius (CssUrl, luciusFile, luciusFileReload, renderCss)
 import SofiaCommandParser
 import SofiaAxiomParser
 import SofiaTree
+import Parsing
 import Sofia -- for validateAxiomParams
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
@@ -86,44 +87,82 @@ helpText = $(whamletFile "help.hamlet")
 
 axEmpty = AxiomBuilder "" "" "" 0 ""
 
-{-dbTranslate :: String -> String
-dbTranslate cs =
-    if validateSyntax sRecallRaw cs == []
-    then "recall " ++ (axiomBuilderSchema axiom)
-    else cs
+linesFromHist :: [String] -> [ProofLine]
+linesFromHist hist = toListFromProof $ evalList hist
+
+propFromLines :: [ProofLine] -> (String, String)
+propFromLines pl = ("{`" ++ pstr ++ "`, 0, []}", "Proposition: " ++ pstr)
     where
-        args   = recallRawParse cs
-        axiomH = runDB $ get (toSqlKey 1 :: (Key AxiomBuilder))
-        axiom  = case axiomH of
-                    HandlerFor Nothing -> axEmpty
-                    HandlerFor (Just ax) -> ax-}
+        t     = treeFromLn $ Prelude.head pl
+        t'    = treeFromLn $ Prelude.last pl
+        pstr  = show (treeSTMT ([t, treeIMP, t']))
 
 postHomeR :: Handler Html
 postHomeR = do
     pg   <- runInputPost $ iopt textField "page"
-    hst  <- runInputPost $ iopt textField "history"
     msg  <- runInputPost $ iopt textField "message"
-    theory <- runDB $ selectList [] []
-    -- axiom  <- runDB $ get (toSqlKey 1 :: (Key AxiomBuilder))
+    hst  <- runInputPost $ iopt textField "history"
     let history = case hst of
             Nothing -> []
             Just h  -> unpack h
-    let message = case msg of
-            Nothing -> []
-            Just m  -> unpack m
+    let historylist = case history == [] of
+            True  -> []
+            False -> (Data.List.Split.splitOn ";" history)
     let oldpage = case pg of
             Nothing -> []
             Just p  -> unpack p
-    let newpage = case message of       -- defining navigation commands
-            ":help"   -> "help"
-            ":theory" -> "theory"
-            _         -> ""
-    let page = if newpage == []
-               then
-                    if oldpage == []
-                    then "help"         -- default page
-                    else oldpage
-               else newpage
+    case msg of
+        Nothing -> mainHandler history [] "" oldpage
+        Just "" -> mainHandler history [] "" oldpage
+        Just m -> do
+            let message = unpack m
+            let metacmd = if Prelude.head message == ':'
+                          then Prelude.tail message
+                          else ""
+            let metaParse = parse sMeta metacmd
+            let pErr = parsingErrors metaParse
+            case pErr of
+                [] -> case fst $ fst $ Prelude.head metaParse of
+                        "postulate" ->
+                            if Prelude.length historylist <= 1
+                            then mainHandler history ["Proof not long enough."]
+                                             "" oldpage
+                            else do
+                                let lines = linesFromHist historylist
+                                if (numDepth $ Prelude.last lines) /= 0
+                                then mainHandler
+                                             history
+                                             ["Not at depth 0."]
+                                             ""
+                                             oldpage
+                                else do
+                                    let newName = Prelude.head
+                                           (snd $ fst $ Prelude.head metaParse)
+                                    axiom <- runDB $ getBy (Axiom "User" newName)
+                                    case axiom of
+                                        Nothing -> do
+                                            let prop = propFromLines lines
+                                            runDB $ insert $
+                                              AxiomBuilder "User"
+                                                           newName
+                                                           (fst prop)
+                                                           0
+                                                           (snd prop)
+                                            mainHandler history [] "" oldpage
+                                        _       ->
+                                            mainHandler
+                                              history
+                                              ["Name not available"]
+                                              ""
+                                              oldpage
+                        "help"    -> mainHandler history [] "" "help"
+                        "theory"  -> mainHandler history [] "" "theory"
+                        _  -> mainHandler history [] message oldpage
+                _  -> mainHandler history [] message oldpage
+
+mainHandler :: String -> [String] -> String -> String -> Handler Html
+mainHandler history errorMeta message page = do
+    theory <- runDB $ selectList [] []
     let isRecall = validateSyntax sRecallRaw message == []
     let recall = if isRecall
                  then recallRawParse message
@@ -152,11 +191,9 @@ postHomeR = do
                            axName    = axiomBuilderRubric ax ++ ": " ++
                                         axiomBuilderName ax
                            result    = axiomBuild schema args
-    let command = case newpage of       -- only process non-navigation cmds
-            []  -> if isRecall
+    let command =  if isRecall
                    then recallcmd
                    else message
-            _   -> []
     let errorSyntax = if command == []
                       then []
                       else validateSyntax sCommand command
@@ -171,7 +208,7 @@ postHomeR = do
                             then dbError
                             else validateSemantics command oldproof
                          else []
-    let errorMsgs = errorSyntax ++ errorSemantics
+    let errorMsgs = errorMeta ++ errorSyntax ++ errorSemantics
     let newhistory = if or [errorMsgs /= [], command == []]
                      then history
                      else

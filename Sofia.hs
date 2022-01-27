@@ -19,6 +19,7 @@ module Sofia (
     -- $naming
 
     -- * General commands
+    Postulate,
     postulate,
 
     -- * Proof building commands
@@ -710,27 +711,6 @@ atomsFromCoords p xs =
             ]
 
 ------------------------- Functions generating SofiaTrees  ---------------------
-
-treeEQ :: SofiaTree
-treeEQ = (newSofiaTree [] Equality [])
-
-treeIMP :: SofiaTree
-treeIMP = (newSofiaTree [] Implication [])
-
-treeTRUTH :: SofiaTree
-treeTRUTH = newSofiaTree [] Statement [newSofiaTree[] Atom []]
-
-treeSTMT :: [SofiaTree] -> SofiaTree
-treeSTMT ts =
-        newSofiaTree []
-                     Statement
-                     [newSofiaTree [] Atom [newSofiaTree[] Formula ts]]
-
-treeSTMT' :: [SofiaTree] -> SofiaTree
-treeSTMT' ts =
-        newSofiaTree []
-                     Statement
-                     ts
 
 treeDeduceSELF :: SofiaTree -> Int -> SofiaTree
 treeDeduceSELF t i = treeSTMT [statement, treeEQ, statement] where

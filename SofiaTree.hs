@@ -47,7 +47,14 @@ module SofiaTree
 
      newSofiaTree,
      newProof,
-     newLine) where
+     newLine,
+
+     treeEQ,
+     treeIMP,
+     treeSTMT,
+     treeSTMT',
+     treeTRUTH
+     ) where
 
 import ListHelpers
 
@@ -266,3 +273,26 @@ ruleFromLn (Line _ _ _ d) = d
 
 pdo :: ([ProofLine] -> a) -> Proof -> a
 pdo func proof = func (toListFromProof proof)
+
+--------------------------------------------------------------------------------
+
+treeEQ :: SofiaTree
+treeEQ = (newSofiaTree [] Equality [])
+
+treeIMP :: SofiaTree
+treeIMP = (newSofiaTree [] Implication [])
+
+treeTRUTH :: SofiaTree
+treeTRUTH = newSofiaTree [] Statement [newSofiaTree[] Atom []]
+
+treeSTMT :: [SofiaTree] -> SofiaTree
+treeSTMT ts =
+        newSofiaTree []
+                     Statement
+                     [newSofiaTree [] Atom [newSofiaTree[] Formula ts]]
+
+treeSTMT' :: [SofiaTree] -> SofiaTree
+treeSTMT' ts =
+        newSofiaTree []
+                     Statement
+                     ts
