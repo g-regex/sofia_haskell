@@ -14,6 +14,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 {-# OPTIONS_HADDOCK prune #-}
+--{-# OPTIONS_HADDOCK ignore-exports #-}
 
 {-|
 Module      : WebInterface
@@ -64,8 +65,8 @@ import ListHelpers
 import Sofia -- for validateAxiomParams
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-AxiomBuilder --^ lala
-    rubric    String --^ The Rubric
+AxiomBuilder
+    rubric    String
     name      String
     schema    String
     params    Int
@@ -243,7 +244,7 @@ getHomeR :: Handler Html
 getHomeR = postHomeR
 
 -- |Does some preprocessing of the retrieved data from the input fields and
--- either calls `metaHandler` (if a meta-command was issued) or `mainHandler`
+-- either calls `metaHandler` (if a meta command was issued) or `mainHandler`
 -- (otherwise).
 postHomeR :: Handler Html
 postHomeR = do
@@ -437,7 +438,7 @@ divView ::     String                -- ^The history of commands that were used
                                      --  from the database.
             -> [String]              -- ^A list of error messages resulting from
                                      --  the last entered command.
-            -> HandlerFor App Html
+            -> HandlerFor App Html   -- ^The result.
 divView newhistory valid pLines page theory errorMsgs =
     defaultLayout
      [whamlet|

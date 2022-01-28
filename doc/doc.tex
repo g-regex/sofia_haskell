@@ -23,6 +23,7 @@
 
 \newcommand\m[1]{\mintinline{haskell}{#1}}
 \newcommand\mh[1]{\mintinline{html}{#1}}
+\newcommand\ms[1]{\mintinline{sql}{#1}}
 
 \usepackage{pmboxdraw}
 
@@ -125,7 +126,71 @@ the commands in the history and the current command in sequence.
 \\
 There are also some `meta commands', which do not operate on the current proof
 but are rather concerned with the appearance of the user interface, storing the
-current proof as a postulate or loading a proof from the database.
+current proof as a postulate or loading a proof from the database. Parsing of
+all commands is accomplished by the \m{SofiaCommandParser} module.
+
+\section{Database}
+To store axioms, axiom builders, propositions and proofs (for the purposes of
+the database they are all the same), we use a table in an SQLite database. This
+table has the following form:
+
+\begin{minted}{sql}
+CREATE TABLE "axiom_builder"(
+    "id"        INTEGER PRIMARY KEY,
+    "rubric"    VARCHAR NOT NULL,
+    "name"      VARCHAR NOT NULL,
+    "schema"    VARCHAR NOT NULL,
+    "params"    INTEGER NOT NULL,
+    "desc"      VARCHAR NOT NULL,
+    "hist"      VARCHAR NOT NULL,
+    CONSTRAINT "axiom" UNIQUE ("rubric","name"))
+\end{minted}
+
+Each entry as an auto-incrementing (default setting) \ms{"id"} as the primary
+key. Further, each entry can be identified by a \emph{unique} combination of a
+\ms{"rubric"} and a \ms{"name"} (e.g.\ \texttt{Arithmetic} and
+\texttt{Induction}). The column \ms{"schema"} contains string representations of
+\m{AxiomSchema}s (see Section~\ref{sec:axiom_schemas}). The column \ms{"params"}
+contains the number of parameters required by the \m{AxiomSchema} - this value
+is determined by the \m{AxiomSchema}, but is stored for convenience in the table
+as well. The \ms{"desc"} column contains some string containing a human readable
+description of the axiom builder for the user. Finally, the \ms{"hist"} column
+may contain a history of commands that where used to obtain a postulate (or
+example proof, theorem, etc.); in the case of axioms the field contains the
+empty string.\\\\
+Using the \texttt{Persistent} library\footnote{A helpful introduction to
+\texttt{Persistent} can be found here:
+\url{https://www.yesodweb.com/book/persistent}}, a Haskell data type is created
+which directly corresponds to this table:
+
+\newcommand{\htt}[1]{{\small\bfseries\texttt{#1}}}
+
+\begin{haddockdesc}
+\item[\mintinline{haskell}{
+data AxiomBuilder
+}]
+{\haddockbegindoc
+\enspace \emph{Constructors}\par
+\begin{tabulary}{\linewidth}{@{}llJ@{}}
+    \htt{=}  &   \htt{AxiomBuilder}         &                 \\
+             &   \htt{\{  axiomBuilderRubric } &\htt{:: !String} \\
+             &   \htt{,   axiomBuilderName   } &\htt{:: !String} \\
+             &   \htt{,   axiomBuilderSchema } &\htt{:: !String} \\
+             &   \htt{,   axiomBuilderParams } &\htt{:: !Int   } \\
+             &   \htt{,   axiomBuilderDesc   } &\htt{:: !String} \\
+             &   \htt{,   axiomBuilderHist   } &\htt{:: !String \}}
+ \end{tabulary}}
+\end{haddockdesc}
+
+\pagebreak
+\section{Axiom schemas}\label{sec:axiom_schemas}
+\input{haddock/SofiaAxiomParser}
+The EBNF for axiom schemas looks as follows:
+\begin{figure}[h!]
+    {\renewcommand{\arraystretch}{2.0}
+    \input{figures/axiom_ebnf}}
+    \caption{EBNF for axiom schemas}\label{fig:EBNFaxiom}
+\end{figure}
 
 \input{haddock/WebInterface}
 
