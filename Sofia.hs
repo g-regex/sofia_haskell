@@ -255,72 +255,6 @@ matchesPattern (i, yis) t = patternFromTree t i == (i, yis)
 isVar :: SofiaTree -> Bool
 isVar t =  matchesPattern patternVar t
 
---------------------------------------------------------------------------------
-{-axiomZero :: Postulate
-axiomZero =
-    ((treeParse "[0[]][[0[]]nat][[n][[n]nat][[0[]]=[1+[n]]]:[![]]]"),
-     "Arithmetic: Zero")-}
-
-axiomZero :: Postulate
-axiomZero =
-  (axiomBuild ax [], "Arithmetic: Zero")
-  where
-   ax = axiomParse
-    ("{`[0[]][[0[]]nat][[n][[n]nat][[0[]]=[1+[n]]]:[![]]]`, 0, []}")
-
-axiomSucc :: Postulate
-axiomSucc =
-    ((treeParse ("[[n][[n]nat]:[1+[n]][[1+[n]]nat][[m][[m]nat]" ++
-                 "[[1+[n]]=[1+[m]]]:[[n]=[m]]]]")),
-     "Arithmetic: Successor")
-
--- TODO: check whether parameters are atoms
---  error checking
-axiomInduction :: [String] -> Postulate
-axiomInduction css =
-  (axiomBuild ax css, "Arithmetic: Induction on " ++
-                               (getIndex 3 css) ++ " in " ++
-                               (getIndex 2 css) ++ (getIndex 1 css) )
-  where
-   ax = axiomParse
-    ("{`[ [[]] [             [[]] [ [[]] nat] [[]] : [[]] ]:[                        [[]] [ [[]] nat]: [[]] ]]`, 0, " ++
-     "   [ {1, 3, `[0[]]`}, 3,     3,        1,     {1, 3, {`[1+[[]]]`, 0, [3]}}, 3,     3,         1             ]}")
-   {-ax    = ReplaceString ("[ [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:" ++
-                          "[ [[]] [ [[]] nat]: [[]] ]]") 0
-           [
-           ReplaceAll 1 3 (FinalString "[0[]]"),
-           Final 3,
-           Final 3,
-           Final 1,
-           ReplaceAll 1 3
-             (
-             ReplaceString "[1+[[]]]" 0 [Final 3]
-             ),
-           Final 3,
-           Final 3,
-           Final 1
-           ]-}
-
-axiomRestComp :: [String] -> Postulate
-axiomRestComp css =
-  (axiomBuild ax css, "Set: Restricted Comprehension on " ++
-                               (getIndex 5 css) )
-  where
-   ax = axiomParse
-    ("{`[ [[]] :[ [[]] : [[]] [ [[]] :[ [ [[]] in [[]] ] =[[]:[ [[]] in [[]] ] [[]] ]]]]]`, 0, " ++
-     "   [ 2,      5,     4,     3,        3,      4,            3,      5,     1        ]}")
-
-{-axiomFalseUniv :: String -> String -> Postulate
-axiomFalseUniv cs1 cs2 =
-    ((treeBuilder "[ [[]] [![]]: [[]] ]" [cs2, cs1]),
-     "Boolean: False Universality")
-
-axiomDoubleNeg :: String -> String -> Postulate
-axiomDoubleNeg cs1 cs2 =
-    ((treeBuilder "[ [[]] [[ [[]] :[![]]]:[![]]]: [[]] ]" [cs2, cs1, cs1]),
-     "Boolean: Double Negation")
-    -}
-
 -- $matchingexample
 -- We can now check whether a given `SofiaTree` is for example a variable.
 -- Since our template `Pattern` was created with `patternAtomParse`, we
@@ -712,55 +646,6 @@ atomsFromCoords p xs =
 
 ------------------------- Functions generating SofiaTrees  ---------------------
 
-treeDeduceSELF :: SofiaTree -> Int -> SofiaTree
-treeDeduceSELF t i = treeSTMT [statement, treeEQ, statement] where
-    statement = getAtom i t
-
-treeDeduceREST :: [ProofLine] -> [(Int, Int)] -> SofiaTree
-treeDeduceREST p xs = newSofiaTree [] Statement (atomsFromCoords p xs)
-
-treeDeduceSYN :: [ProofLine] -> SofiaTree
-treeDeduceSYN p = treeSTMT (ts ++ [t, treeIMP, t'])
-   where
-    p'   = linesLastBracket p
-    t    = treeFromLn $ head p'
-    t'   = treeFromLn $ last p'
-    ts   = [treeSTMT [newSofiaTree v Symbol []]  -- statements introducing
-                                                 -- context specific
-                                                 -- variables
-           |
-           v <- strsContextSpecific p,
-           not (elem v (map strFromVar (varsTopLvl t)))
-                                        -- exclude variables that were
-                                        -- introduced in the first
-                                        -- statement of the current bracket
-           ]
-
-treeDeduceAPPLY :: [ProofLine] ->
-                   [(SofiaTree, SofiaTree)] ->
-                   SofiaTree ->
-                   SofiaTree
-treeDeduceAPPLY p rs t =
-    if subset (atomsConditions t') (atomsScope p)
-    then treesImplied t'
-    else treeTRUTH
-       where
-        t' = treeSubstTree rs t [1..]
-
-treeDeduceLS :: SofiaTree -> SofiaTree -> [Int] -> SofiaTree
-treeDeduceLS subst target indices =
-    treeSTMT' [treeSubstTree [(rhs, lhs)] target indices]
-       where
-        lhs = head $ getSubtrees $ stmtFromEQ leftHS subst
-        rhs = head $ getSubtrees $ stmtFromEQ rightHS subst
-
-treeDeduceRS :: SofiaTree -> SofiaTree -> [Int] -> SofiaTree
-treeDeduceRS subst target indices =
-    treeSTMT' [treeSubstTree [(lhs, rhs)] target indices]
-       where
-        lhs = head $ getSubtrees $ stmtFromEQ leftHS subst
-        rhs = head $ getSubtrees $ stmtFromEQ rightHS subst
-
 type Postulate = (SofiaTree, String)
 
 -- |Takes a `String` representation of a Sofia statement and `String`
@@ -925,7 +810,8 @@ selfequate (line, col) p = if valid then p <+> l else p
              (numCurDepth p')           -- keep depth the same
              t
              (Selfequate (line, col))]
-    t     = treeDeduceSELF (treeFromLn $ getIndex line p') col
+    stmt  = getAtom col (treeFromLn $ getIndex line p')
+    t     = treeSTMTform [stmt, treeEQ, stmt]
 
 -- TODO: possible improvement: substitute more than one free variable
 -- |Restates given statements and renames the first free variable to
@@ -947,7 +833,7 @@ restate pos_list css p = if valid then p <+> l else p
          (numCurDepth p')                   -- keep depth the same
          (treeSubstSymbolList p' vs css t)  -- substitute free variables
          (Restate pos_list css)]
-    t  = treeDeduceREST p' pos_list
+    t  = newSofiaTree [] Statement (atomsFromCoords p' pos_list)
     vs = map strFromVar (varsFree p' t)   -- list of all free variables in t
 
 
@@ -962,15 +848,27 @@ synapsis p = if valid then p <+> l else p
    where
     valid = validateSynapsis p == []
     p' = toListFromProof p
-    l = toProofFromList [newLine
-         (1 + numCurLn p')                -- increase line number
-         (numCurDepth p' - 1)             -- decrease assumption depth
-         (t)
-         (Synapsis i1 i2)]
-    t  = treeDeduceSYN p'
-    ls = linesLastBracket p'
-    i1 = numLine (head ls)
-    i2 = numLine (last ls)
+    l  = toProofFromList [newLine
+          (1 + numCurLn p')                -- increase line number
+          (numCurDepth p' - 1)             -- decrease assumption depth
+          (t)
+          (Synapsis i1 i2)]
+    t   = treeSTMTform (ts ++ [t', treeIMP, t''])
+    p'' = linesLastBracket p'
+    t'  = treeFromLn $ head p''
+    t'' = treeFromLn $ last p''
+    ts  = [treeSTMTform [newSofiaTree v Symbol []]  -- statements introducing
+                                                -- context specific
+                                                -- variables
+          |
+          v <- strsContextSpecific p',
+          not (elem v (map strFromVar (varsTopLvl t')))
+                                        -- exclude variables that were
+                                        -- introduced in the first
+                                        -- statement of the current bracket
+          ]
+    i1  = numLine (head p'')
+    i2  = numLine (last p'')
 
 -- |Applies an implication. Given a list of statements (their positions),
 -- free variables in the implication are replaced by the statements. Then
@@ -987,15 +885,20 @@ apply ::         Int          -- ^The line of the implication to be applied.
 apply line pos_list col p = if valid then p <+> l else p
    where
     valid = validateApply line pos_list col p == []
-    p' = toListFromProof p
-    l = toProofFromList [newLine
-         (1 + numCurLn p')          -- increase line number
-         (numCurDepth p')           -- keep depth the same
-         (t)
-         (Apply line pos_list col)]
-    t' = getAtom col $ treeFromLn $ getIndex line p'
-    t  = treeAutoSubstSymbols p' (treeDeduceAPPLY p' rs t') True
-    rs = zip (varsFree p' t') (atomsFromCoords p' pos_list)
+    p'  = toListFromProof p
+    l   = toProofFromList [newLine
+           (1 + numCurLn p')          -- increase line number
+           (numCurDepth p')           -- keep depth the same
+           (t)
+           (Apply line pos_list col)]
+    t'  = getAtom col $ treeFromLn $ getIndex line p'
+    t'' = treeSubstTree rs t' [1..]
+    t3  = if subset (atomsConditions t'') (atomsScope p')
+          then treesImplied t''
+          else treeTRUTH
+    t   = treeAutoSubstSymbols p' t3 True
+    rs  = zip (varsFree p' t') (atomsFromCoords p' pos_list)
+
 
 -- |Right substitution: The right hand side of the equality at a given
 -- position replaces certain occurences (whose indicies, numbered in
@@ -1018,8 +921,10 @@ rightsub sub_line tgt_line is sub_col tgt_col p = if valid then p <+> l else p
          (numCurDepth p')
          (t)
          (RightSub sub_line tgt_line is sub_col tgt_col)]
-    t  = treeDeduceRS subst target is
-    subst = head (atomsFromCoords p' [(sub_line, sub_col)])
+    t      = treeSTMT [treeSubstTree [(lhs, rhs)] target is]
+    subst  = head (atomsFromCoords p' [(sub_line, sub_col)])
+    lhs    = head $ getSubtrees $ stmtFromEQ leftHS subst
+    rhs    = head $ getSubtrees $ stmtFromEQ rightHS subst
     target = head (atomsFromCoords p' [(tgt_line, tgt_col)])
 
 -- |Left substitution: The leftt hand side of the equality at a given
@@ -1043,269 +948,8 @@ leftsub sub_line tgt_line is sub_col tgt_col p = if valid then p <+> l else p
          (numCurDepth p')
          (t)
          (LeftSub sub_line tgt_line is sub_col tgt_col)]
-    t  = treeDeduceLS subst target is
-    subst = head (atomsFromCoords p' [(sub_line, sub_col)])
+    t      = treeSTMT [treeSubstTree [(rhs, lhs)] target is]
+    subst  = head (atomsFromCoords p' [(sub_line, sub_col)])
+    lhs    = head $ getSubtrees $ stmtFromEQ leftHS subst
+    rhs    = head $ getSubtrees $ stmtFromEQ rightHS subst
     target = head (atomsFromCoords p' [(tgt_line, tgt_col)])
-
------------------------------------ Examples  ---------------------------------- 
--- "Reflexivity of Equality"
-ex1_1 = assume "[X]" newProof
-ex1_2 = selfequate (1,1) ex1_1
-ex1_3 = synapsis ex1_2
---
--- "Symmetry of Equality"
-ex3_1 = assume "[X][Y][[X]=[Y]]" newProof
-ex3_2 = selfequate (1,1) ex3_1
-ex3_3 = rightsub 1 2 [1] 3 1 ex3_2
-ex3_4 = synapsis ex3_3
---
--- "Transitivity of Equality"
-ex4_1 = assume "[X][Y][Z][[X]=[Y]][[Y]=[Z]]" newProof
-ex4_2 = rightsub 1 1 [1] 5 4 ex4_1
-ex4_3 = synapsis ex4_2
---
--- "Mark can feel"
-ex5_1 = assume "[[Mark[]] is human][[X][[X] is human]:[[X] can feel]]" newProof
-ex5_2 = assume "[Mark[]]" ex5_1
-ex5_3 = apply 1 [(2,1)] 2 ex5_2
-ex5_4 = synapsis ex5_3
-ex5_5 = synapsis ex5_4
---
--- "Mark can feel 2"
-ex6_1 = assume "[Mark[]][[Mark[]] is human][[X][[X] is human]:[[X] can feel]]"
-            newProof
-ex6_2 = apply 1 [(1,1)] 3 ex6_1
-ex6_3 = synapsis ex6_2
---
--- "Subset Axiom"
-axiom_subset = postulate ("[[X][[X] is a set][Y][[Y] is a set]:[[[X] sub " ++
-    "[Y]]=[[x][[x] is a set]:[[[x] in [X]]:[[x] in [Y]]]]]]") "Subset Axiom"
---
--- "Subset Reflexivity"
-ex7_1 = assume "[X][[X] is a set]" newProof
-ex7_2 = assume "[x][[x] is a set]" ex7_1
-ex7_3 = assume "[[x] in [X]]" ex7_2
-ex7_4 = restate [(3,1)] [] ex7_3
-ex7_5 = synapsis ex7_4
-ex7_6 = synapsis ex7_5
-ex7_7 = recall axiom_subset ex7_6
-ex7_8 = apply 7 [(1,1), (1,1)] 1 ex7_7
-ex7_9 = leftsub 8 6 [1..] 1 1 ex7_8
-ex7_10 = synapsis ex7_9
---
--- "Russel"
-ex8_1 = assume "[X][[x]:[[[x] in [X]]=[[[x] in [x]]:[False[]]]]]" newProof
-ex8_2 = apply 1 [(1,1)] 2 ex8_1
-ex8_3 = assume "[[X] in [X]]" ex8_2
-ex8_4 = rightsub 2 3 [1..] 1 1 ex8_3
-ex8_5 = apply 4 [] 1 ex8_4
-ex8_6 = synapsis ex8_5
-ex8_7 = leftsub 2 6 [1..] 1 1 ex8_6
-ex8_8 = apply 6 [] 1 ex8_7
-ex8_9 = synapsis ex8_8
---
--- "Axiom: Addition"
-axiom_addition = postulate "[[x][y][[x]num][[y]num]:[[x]+[y]][[[x]+[y]]num]]"
-                    "Addition"
---
--- "Axiom: Number construction"
-axiom_number_construction = postulate "[0[]][[0[]]num][1[]][[1[]]num]"
-                                "Number construction"
---
--- "Axiom: Commutativity"
-axiom_commutativity = postulate "[[x][y][[x]num][[y]num]:[[[x]+[y]]=[[y]+[x]]]]"
-                        "Commutativity"
---
--- "Axiom: Associativity"
-axiom_associativity = postulate ("[[x][y][z][[x]num][[y]num][[z]num]:" ++
-                        "[[[[x]+[y]]+[z]]=[[x]+[[y]+[z]]]]]")
-                        "Associativity"
---
--- "Axiom: Identity"
-axiom_identity = postulate "[[x][[x]num]:[[[0[]]+[x]]=[x]]]" "Identity"
---
--- "Right Identity"
-ex9_1 = assume "[x][[x]num]" newProof
-ex9_2 = recall axiom_identity ex9_1
-ex9_3 = recall axiom_commutativity ex9_2
-ex9_4 = apply 2 [(1,1)] 1 ex9_3
-ex9_5 = recall axiom_number_construction ex9_4
-ex9_6 = apply 3 [(1,1),(5,1)] 1 ex9_5
-ex9_7 = recall axiom_identity ex9_6
-ex9_8 = apply 7 [(1,1)] 1 ex9_7
-ex9_9 = rightsub 8 6 [1..] 1 1 ex9_8
-ex9_10 = synapsis ex9_9
---
--- "Axiom: Variable Introduction"
-axiom_variable_introduction = postulate "[[x]:[y][[y]=[x]]]"
-                                "Variable Introduction"
---
--- "Existential Theorem Example"
-right_identity = (treeFromLn $ plast ex9_10, "Right Identity")
-ex10_1 = recall axiom_number_construction newProof
-ex10_2 = recall right_identity ex10_1
-ex10_3 = recall axiom_variable_introduction ex10_2
-ex10_4 = apply 3 [(1,1)] 1 ex10_3
-ex10_5 = leftsub 4 1 [1..] 2 2 ex10_4
-ex10_6 = leftsub 4 2 [1..] 2 1 ex10_5
-ex10_7 = restate [(5,1),(6,1)] ["x"] ex10_6
-
---
--- "No self successor"
-ex11_1 = recall (axiomInduction ["[[[n]=[1+[n]]]:[![]]]", "", "[n]"]) newProof
-ex11_2 = assume "[[0[]]=[1+[0[]]]]" ex11_1
-ex11_3 = recall axiomZero ex11_2
-ex11_4 = apply 3 [(3,1)] 3 ex11_3
-ex11_5 = synapsis ex11_4
-ex11_6 = assume "[n][[n]nat][[[n]=[1+[n]]]:[![]]]" ex11_5
-ex11_7 = assume "[[1+[n']]=[1+[1+[n']]]]" ex11_6
-ex11_8 = recall axiomSucc ex11_7
-ex11_9 = apply 8 [(6,1)] 1 ex11_8
-ex11_10 = apply 9 [(9,1)] 1 ex11_9
-
--- >>> ex1_3
--- ╔[X] /L1: assumption.
--- ╚[[X]=[X]] /L2: self-equate from L1(1).
--- [[X]:[[X]=[X]]] /L3: synapsis (L1-2).
-
--- $examples
--- At the end of the source code of the `Sofia` module some of the examples
--- from the Python version were converted to this Haskell version. For
--- completeness' sake the output of a selection of these examples is given
--- here.
---
--- >>> ex3_4
--- ╔[X][Y][[X]=[Y]] /L1: assumption.
--- ║[[X]=[X]] /L2: self-equate from L1(1).
--- ╚[[Y]=[X]] /L3: right substitution, L1(3) in L2(1).
--- [[X][Y][[X]=[Y]]:[[Y]=[X]]] /L4: synapsis (L1-3).
---
--- >>> ex4_3
--- ╔[X][Y][Z][[X]=[Y]][[Y]=[Z]] /L1: assumption.
--- ╚[[X]=[Z]] /L2: right substitution, L1(5) in L1(4).
--- [[X][Y][Z][[X]=[Y]][[Y]=[Z]]:[[X]=[Z]]] /L3: synapsis (L1-2).
---
--- >>> ex9_10
--- ╔[x][[x]num] /L1: assumption.
--- ║[[x'][[x']num]:[[[0[]]+[x']]=[x']]] /L2: recalling "Identity".
--- ║[[x'][y][[x']num][[y]num]:[[[x']+[y]]=[[y]+[x']]]] /L3: recalling "Commutativity".
--- ║[[[0[]]+[x]]=[x]] /L4: application of L2.1 (with concretization [(1,1)]).
--- ║[0[]][[0[]]num][1[]][[1[]]num] /L5: recalling "Number construction".
--- ║[[[x]+[0[]]]=[[0[]]+[x]]] /L6: application of L3.1 (with concretization [(1,1),(5,1)]).
--- ║[[x'][[x']num]:[[[0[]]+[x']]=[x']]] /L7: recalling "Identity".
--- ║[[[0[]]+[x]]=[x]] /L8: application of L7.1 (with concretization [(1,1)]).
--- ╚[[[x]+[0[]]]=[x]] /L9: right substitution, L8(1) in L6(1).
--- [[x][[x]num]:[[[x]+[0[]]]=[x]]] /L10: synapsis (L1-9).
---
--- >>> ex10_7
--- [0[]][[0[]]num][1[]][[1[]]num] /L1: recalling "Number construction".
--- [[x][[x]num]:[[[x]+[0[]]]=[x]]] /L2: recalling "Right Identity".
--- [[x]:[y][[y]=[x]]] /L3: recalling "Variable Introduction".
--- [y'][[y']=[0[]]] /L4: application of L3.1 (with concretization [(1,1)]).
--- [[y']num] /L5: left substitution, L4(2) in L1(2).
--- [[x][[x]num]:[[[x]+[y']]=[x]]] /L6: left substitution, L4(2) in L2(1).
--- [[y']num][[x][[x]num]:[[[x]+[y']]=[x]]] /L7: restatement (see lines [(5,1),(6,1)]).
-
----------------------- EXPERIMENTAL/NOT NEEDED ---------------------------------
--- The following code is redundant and not used in this project, but kept in
--- this file in case snippets of the code are of use in future.
-
--- placeholder pattern
-patternPH :: Pattern
-patternPH = patternAtomParse "[[]]" (-1)
-
-type Schema = [(String, TypeOfNode, Int)]
-
--- Gets a list of nodes corresponding to a (sub)tree from a list of nodes
--- obtained by a preorder traversal with the information of how many subtrees
--- each node has attached to each element (node) of the list.
-getSubtree :: [(a, b, Int)] -> [(a, b, Int)]
-getSubtree ((a, b, i):xs) = getSubtreeHelper [(a, b, i)] xs i
-
-getSubtreeHelper :: [(a, b, Int)] -> [(a, b, Int)] -> Int -> [(a, b, Int)]
-getSubtreeHelper xs _ 0 = xs 
-getSubtreeHelper xs [] _ = [] 
-getSubtreeHelper xs ((a, b, i):ys) i' =
-    getSubtreeHelper (xs ++ [(a, b, i)]) ys (i' + i - 1)
-
--- Creates a tree from a list of nodes obtained by a preorder traversal (called
--- a `Schema` here.
-treeFromSchema :: Schema -> SofiaTree
-treeFromSchema x = head $ treesFromSchema x
-
-treesFromSchema :: Schema -> [SofiaTree]
-treesFromSchema [] = []
-treesFromSchema ((cs, y, 0):[]) = [newSofiaTree cs y []]
-treesFromSchema ((cs, y, 0):xs) = [newSofiaTree cs y []] ++ (treesFromSchema xs)
-treesFromSchema ((cs, y, i):xs) =
-    [newSofiaTree cs y (treesFromSchema sub)] ++ (treesFromSchema rest)
-       where
-        sub  = tail $ getSubtree ((cs, y, i):xs)
-        rest = drop (length sub) xs
-
--- Does a partial preorder traversal: The traversal does not explore subtrees
--- whose root does not satisfy a filter condition.
-preorderPartial :: (SofiaTree -> b) ->
-                   (SofiaTree -> b) ->
-                   (SofiaTree -> Bool) ->
-                   SofiaTree ->
-                   [b]
-preorderPartial xf xf' f t =
-    if f t
-    then [xf' t]
-    else
-        if getSubtrees t == []
-        then [xf t]
-        else [xf t] ++ [x | t' <- (getSubtrees t),
-                            x <- preorderPartial xf xf' f t']
-
-typeOfTuple :: (String, TypeOfNode, Int) -> TypeOfNode
-typeOfTuple (_, y, _) = y
-
--- Creates a `Schema` from a `SofiaTree`.
-schemaFromTree ::     SofiaTree    -- ^The `SofiaTree`.
-                    -> Schema      -- ^The resulting `Schema`.
-schemaFromTree t =
-    preorderPartial (\x -> (getSymbol x, toType x, length $ getSubtrees x))
-                    (\x -> ("", Placeholder, 0))
-                    (\x -> matchesPattern patternPH x) t
-
-schemaParse :: String -> Schema
-schemaParse cs = schemaFromTree $ treeParse cs
-
--- Takes a `Schema` and a list of lists of atoms and builds a tree from the
--- `Schema`, replacing all placeholders with the lists of atoms.
-treeSubstSchema :: Schema ->
-                   [[SofiaTree]] ->
-                   SofiaTree
-treeSubstSchema ms tss = head $ fst $ treesSubstPH (treesFromSchema ms) tss
-
--- Takes a list of trees and and list of lists of atoms used to replace all
--- `Placeholder`s in the trees of the first list.
-treesSubstPH :: [SofiaTree] ->
-                [[SofiaTree]] ->
-                ([SofiaTree], [[SofiaTree]])
-treesSubstPH [] tss = ([], tss)
-treesSubstPH (t:ts') [] = ((t:ts'), [])
-treesSubstPH (t:ts') (ts:tss) =
-    if toType t /= Placeholder
-    then ((newSofiaTree (getSymbol t)
-                        (toType t)
-                        (subtree)) : rest_tree, rest_i)
-    else (ts ++ rest_tree, rest_i)
-       where
-        incr       = if toType t /= Placeholder then (ts:tss) else tss
-        recur      = treesSubstPH (getSubtrees t) incr
-        subtree    = fst recur
-        rest       = treesSubstPH ts' (snd recur)
-        rest_tree  = fst rest
-        rest_i     = snd rest
-
-atomssParse :: [String] -> [[SofiaTree]]
-atomssParse css = [getSubtrees $ treeParse cs | cs <- css]
-
--- Takes a `String` to create a `Schema` in which all placeholders will be
--- replaced by the trees with string representations given by the second list.
--- Returns the resulting `SofiaTree`.
-treeBuilder' :: String -> [String] -> SofiaTree
-treeBuilder' cs css = treeSubstSchema (schemaParse cs) (atomssParse css)

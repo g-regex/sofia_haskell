@@ -51,8 +51,8 @@ module SofiaTree
 
      treeEQ,
      treeIMP,
+     treeSTMTform,
      treeSTMT,
-     treeSTMT',
      treeTRUTH
      ) where
 
@@ -285,14 +285,15 @@ treeIMP = (newSofiaTree [] Implication [])
 treeTRUTH :: SofiaTree
 treeTRUTH = newSofiaTree [] Statement [newSofiaTree[] Atom []]
 
+treeSTMTform :: [SofiaTree] -> SofiaTree
+treeSTMTform ts =
+        newSofiaTree []
+                     Statement
+                     [newSofiaTree [] Atom [newSofiaTree [] Formula ts]]
+
 treeSTMT :: [SofiaTree] -> SofiaTree
 treeSTMT ts =
         newSofiaTree []
                      Statement
-                     [newSofiaTree [] Atom [newSofiaTree[] Formula ts]]
-
-treeSTMT' :: [SofiaTree] -> SofiaTree
-treeSTMT' ts =
-        newSofiaTree []
-                     Statement
                      ts
+
