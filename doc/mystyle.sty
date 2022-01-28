@@ -21,6 +21,10 @@
 \newcommand{\haddockbeginheader}{\vspace{-1.0cm}\hrulefill\vspace{-0.3cm}}
 \newcommand{\haddockendheader}{\vspace{-0.5cm}\noindent\hrulefill}
 
+\usepackage{environ}
+\NewEnviron{ignore}{}
+
+
 % a little gap before the ``Methods'' header
 \newcommand{\haddockpremethods}{\vspace{2ex}}
 
@@ -125,5 +129,3 @@
 %\makeatletter
 %\patchcmd{\chapter}{\if@openright\cleardoublepage\else\clearpage\fi}{}{}{}
 %\makeatother
-
-\newcommand\m[1]{\mintinline{haskell}{#1}}

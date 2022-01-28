@@ -13,6 +13,39 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+{-# OPTIONS_HADDOCK prune #-}
+
+{-|
+Module      : WebInterface
+Description :
+Copyright   :
+License     :
+Maintainer  :
+Stability   : experimental
+Portability : POSIX
+
+-}
+
+module WebInterface (
+        -- * Helper functions
+        strProoflines,
+        linesFromHist,
+        propFromLines,
+
+        -- * Yesod Widgets
+        helpText,
+        proofWidget,
+        infoWidget,
+
+        -- * Yesod Handlers
+        getHomeR,
+        postHomeR,
+        mainHandler,
+        metaHandler,
+        divView
+
+        ) where
+
 import Yesod
 import Yesod.Core.Types
 import GHC.Int
@@ -31,8 +64,8 @@ import ListHelpers
 import Sofia -- for validateAxiomParams
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-AxiomBuilder
-    rubric    String
+AxiomBuilder --^ lala
+    rubric    String --^ The Rubric
     name      String
     schema    String
     params    Int
@@ -75,161 +108,66 @@ instance YesodPersist App where
         App pool <- getYesod
         runSqlPool action pool
 
-getHomeR :: Handler Html
-getHomeR = postHomeR
+openConnectionCount :: Int
+openConnectionCount = 10
 
-strProoflines :: Proof -> [Text]
+main :: IO ()
+main = runStderrLoggingT $ withSqlitePool "theory.db" openConnectionCount
+    $ \pool -> liftIO $ do
+        warp 3000 $ App pool
+
+---------------------------------- Helpers -------------------------------------
+
+-- |Converts a `Proof` into a list containing for each `ProofLine` a `Text`
+-- representation.
+strProoflines ::    Proof   -- ^The `Proof` to be converted.
+                 -> [Text]  -- ^The resulting list of `Text` representations.
 strProoflines p = case p of
                 PListEnd -> []
                 _        -> Prelude.map pack $
                                 (Data.List.Split.splitOn "\n" $ show $ p) ++
                                 [""]
 
-helpText = $(whamletFile "help.hamlet")
-
-axEmpty = AxiomBuilder "" "" "" 0 ""
-
-linesFromHist :: [String] -> [ProofLine]
+-- |Given a list of user inferface commands the resulting `Proof` is calculated
+-- and then the corresponding list of `ProofLine`s is returned.
+linesFromHist ::    [String]        -- ^A list of user interface commands.
+                 -> [ProofLine]     -- ^The resulting list of `ProofLine`s.
 linesFromHist hist = toListFromProof $ evalList hist
 
-propFromLines :: [ProofLine] -> (String, String)
+-- |Given a list of `ProofLine`s, a pair containing two `String`s is returned.
+-- The first `String` is a representation of the `AxiomScheme` (see
+-- `SofiaAxiomParser` module) generating the `Postulate` resulting
+-- from the given proof. The second `String` is a simple description of the
+-- `Postulate` based on the `String` representation of the underlying
+-- `SofiaTree`.
+propFromLines ::    [ProofLine]         -- ^A list of `ProofLine`s constituting
+                                        --  a proof.
+                 -> (String, String)    -- ^The resulting pair containing
+                                        --  information to be stored in a
+                                        --  database.
 propFromLines pl = ("{`" ++ pstr ++ "`, 0, []}", "Postulate: " ++ pstr)
     where
         t     = treeFromLn $ Prelude.head pl
         t'    = treeFromLn $ Prelude.last pl
         pstr  = show (treeSTMT ([t, treeIMP, t']))
 
-postHomeR :: Handler Html
-postHomeR = do
-    pg   <- runInputPost $ iopt textField "page"
-    msg  <- runInputPost $ iopt textField "message"
-    hst  <- runInputPost $ iopt textField "history"
-    let history = case hst of
-            Nothing -> []
-            Just h  -> unpack h
-    let historylist = case history == [] of
-            True  -> []
-            False -> (Data.List.Split.splitOn ";" history)
-    let oldpage = case pg of
-            Nothing -> []
-            Just p  -> unpack p
-    case msg of
-        Nothing -> mainHandler history [] "" oldpage
-        Just "" -> mainHandler history [] "" oldpage
-        Just m -> do
-            let message = unpack m
-            let metacmd = if Prelude.head message == ':'
-                          then Prelude.tail message
-                          else ""
-            let metaParse = parse sMeta metacmd
-            let pErr = parsingErrors metaParse
-            case pErr of
-                [] -> case fst $ fst $ Prelude.head metaParse of
-                        "postulate" ->
-                            if Prelude.length historylist <= 1
-                            then mainHandler history ["Proof not long enough."]
-                                             "" oldpage
-                            else do
-                                let pLines = linesFromHist historylist
-                                if (numDepth $ Prelude.last pLines) /= 0
-                                then mainHandler
-                                             history
-                                             ["Not at depth 0."]
-                                             ""
-                                             oldpage
-                                else do
-                                    let newName = Prelude.head
-                                           (snd $ fst $ Prelude.head metaParse)
-                                    axiom <- runDB $ getBy (Axiom "User" newName)
-                                    case axiom of
-                                        Nothing -> do
-                                            let prop = propFromLines pLines
-                                            runDB $ insert $
-                                              AxiomBuilder "User"
-                                                           newName
-                                                           (fst prop)
-                                                           0
-                                                           (snd prop)
-                                                           history
-                                            mainHandler history [] "" oldpage
-                                        _       ->
-                                            mainHandler
-                                              history
-                                              ["Name not available"]
-                                              ""
-                                              oldpage
-                        "load"    -> do
-                                    let index = read (Prelude.head $ snd $ fst $
-                                            Prelude.head metaParse) ::
-                                            GHC.Int.Int64
-                                    axiom <- runDB $ get (toSqlKey index ::
-                                            (Key AxiomBuilder))
-                                    case axiom of
-                                        Nothing ->
-                                            mainHandler
-                                              history
-                                              ["Entry not found in database."]
-                                              ""
-                                              oldpage
-                                        Just ax -> do
-                                            let loadhist = axiomBuilderHist ax
-                                            if loadhist == ""
-                                            then mainHandler
-                                                  history
-                                                  ["No history for this entry."]
-                                                  ""
-                                                  oldpage
-                                            else mainHandler
-                                                  loadhist
-                                                  []
-                                                  ""
-                                                  oldpage
-                        "help"    -> mainHandler history [] "" "help"
-                        "theory"  -> mainHandler history [] "" "theory"
-                        "new"     -> mainHandler "" [] "" oldpage
-                        "back"    -> mainHandler hpop [] "" oldpage
-                            where
-                             hpop = join ";" $ pop historylist
-                        _  -> mainHandler history [] message oldpage
-                _  -> mainHandler history [] message oldpage
+------------------------------------- Widgets ----------------------------------
 
-tableView newhistory valid pLines page theory errorMsgs =
-    defaultLayout
-     [whamlet|
-     <form #theform method=post action=@{HomeR}>
-      <table width="100%" cellspacing="10" border="0" #outertable>
-       <tbody>
-        <tr #outertabletoptr>
-         <td #outertabletoptd>
-          <table width="100%" cellspacing="0" border="1" #tbl>
-           <tbody>
-            <tr .row>
-             <td #proof valign="top" width="50%">
-              ^{proofWidget newhistory valid pLines errorMsgs}
-             <td #info valign="top" width="50%">
-              ^{infoWidget page theory}
-        <tr #outertablebottom>
-         <td>
-          <div #cmd>
-             <input #prompt type=text name=message
-                placeholder="Type Command ..." size="80" autofocus>
-     |]
+-- |Contains a static help text, which is loaded from the corresponding Hamlet
+-- file.
+helpText :: Widget
+helpText = $(whamletFile "help.hamlet")
 
-divView newhistory valid pLines page theory errorMsgs =
-    defaultLayout
-     [whamlet|
-     <form #theform method=post action=@{HomeR}>
-      <div #tablediv>
-         <div #proof .tddiv>
-          ^{proofWidget newhistory valid pLines errorMsgs}
-         <div #info .tddiv>
-          ^{infoWidget page theory}
-      <br>
-      <div #cmd>
-         <input #prompt type=text name=message
-            placeholder="Type Command ..." size="80" autofocus>
-     |]
-
+-- |Generates the HTML representation of the proof to be displayed.
+proofWidget ::      String      -- ^The history of commands that were used to
+                                --  build the current proof.
+                 -> Bool        -- ^`True` if the last entered command did not
+                                --  result in any errors.
+                 -> [Text]      -- ^A list of `Text` representations of the
+                                --  `ProofLine`s constituting the current proof.
+                 -> [String]    -- ^A list of error messages resulting from
+                                --  the last entered command.
+                 -> Widget      -- ^The resulting `Widget`.
 proofWidget newhistory valid pLines errorMsgs=
     [whamlet|
       <div .inside1>
@@ -245,6 +183,15 @@ proofWidget newhistory valid pLines errorMsgs=
                 Hello! You can start creating a proof.
     |]
 
+-- TODO: Change this so that axiom builders are only fetched from DB when
+-- necessary.
+-- |Generates the HTML representation of the "Info" area (showing a help text or
+-- the theory database).
+infoWidget ::      String                   -- ^Indentifies the page to be
+                                            --  displayed (e.g. help).
+                -> [Entity AxiomBuilder]    -- ^List of axiom builders retrieved
+                                            --  from the database.
+                -> Widget                   -- ^The resulting `Widget`.
 infoWidget page theory =
      [whamlet|
       <div .inside1>
@@ -289,7 +236,132 @@ infoWidget page theory =
                             #{axiomBuilderDesc ab}
      |]
 
-mainHandler :: String -> [String] -> String -> String -> Handler Html
+------------------------------------ Handlers ----------------------------------
+
+-- |Routes directly to `postHomeR`.
+getHomeR :: Handler Html
+getHomeR = postHomeR
+
+-- |Does some preprocessing of the retrieved data from the input fields and
+-- either calls `metaHandler` (if a meta-command was issued) or `mainHandler`
+-- (otherwise).
+postHomeR :: Handler Html
+postHomeR = do
+    pg   <- runInputPost $ iopt textField "page"
+    msg  <- runInputPost $ iopt textField "message"
+    hst  <- runInputPost $ iopt textField "history"
+    let history = case hst of
+            Nothing -> []
+            Just h  -> unpack h
+    let oldpage = case pg of
+            Nothing -> []
+            Just p  -> unpack p
+    case msg of
+        Nothing -> mainHandler history [] "" oldpage
+        Just "" -> mainHandler history [] "" oldpage
+        Just m -> do
+            let message = unpack m
+            let metacmd = if Prelude.head message == ':'
+                          then Prelude.tail message
+                          else ""
+            let metaParse = parse sMeta metacmd
+            let pErr = parsingErrors metaParse
+            case pErr of
+                [] -> metaHandler history (fst $ Prelude.head metaParse)
+                                  message oldpage
+                _  -> mainHandler history [] message oldpage
+
+
+-- |Processes a `meta command' and then calls the `mainHandler`.
+metaHandler ::     String               -- ^The command history.
+                -> (String, [String])   -- ^Ordered pair containing a `String`
+                                        --  representation of the command
+                                        --  and a list of the parameters of that
+                                        --  command.
+                -> String               -- ^An unparsed verson of the command.
+                -> String               -- ^The previously active page in the
+                                        --  `Info' area.
+                -> HandlerFor App Html  -- ^The result.
+metaHandler history parsedMeta message oldpage = do
+    let historylist = case history == [] of
+            True  -> []
+            False -> (Data.List.Split.splitOn ";" history)
+    case fst $ parsedMeta of
+        "postulate" ->
+            if Prelude.length historylist <= 1
+            then mainHandler history ["Proof not long enough."]
+                             "" oldpage
+            else do
+                let pLines = linesFromHist historylist
+                if (numDepth $ Prelude.last pLines) /= 0
+                then mainHandler
+                             history
+                             ["Not at depth 0."]
+                             ""
+                             oldpage
+                else do
+                    let newName = Prelude.head
+                           (snd $ parsedMeta)
+                    axiom <- runDB $ getBy (Axiom "User"
+                                                  newName)
+                    case axiom of
+                        Nothing -> do
+                            let prop = propFromLines pLines
+                            runDB $ insert $
+                              AxiomBuilder "User"
+                                           newName
+                                           (fst prop)
+                                           0
+                                           (snd prop)
+                                           history
+                            mainHandler history [] "" oldpage
+                        _       ->
+                            mainHandler
+                              history
+                              ["Name not available"]
+                              ""
+                              oldpage
+        "load"    -> do
+                    let index = read (Prelude.head $ snd $ parsedMeta) ::
+                            GHC.Int.Int64
+                    axiom <- runDB $ get (toSqlKey index ::
+                            (Key AxiomBuilder))
+                    case axiom of
+                        Nothing ->
+                            mainHandler
+                              history
+                              ["Entry not found in database."]
+                              ""
+                              oldpage
+                        Just ax -> do
+                            let loadhist = axiomBuilderHist ax
+                            if loadhist == ""
+                            then mainHandler
+                                  history
+                                  ["No history for this entry."]
+                                  ""
+                                  oldpage
+                            else mainHandler
+                                  loadhist
+                                  []
+                                  ""
+                                  oldpage
+        "help"    -> mainHandler history [] "" "help"
+        "theory"  -> mainHandler history [] "" "theory"
+        "new"     -> mainHandler "" [] "" oldpage
+        "back"    -> mainHandler hpop [] "" oldpage
+            where
+             hpop = join ";" $ pop historylist
+        _  -> mainHandler history [] message oldpage
+
+
+mainHandler ::      String              -- ^The command history.
+                -> [String]             -- ^A list of error messages resulting
+                                        --  from executing a meta command.
+                -> String               -- ^The command entered by the user.
+                -> String               -- ^The page to be displayed in the
+                                        --  `Info' area.
+                -> Handler Html         -- ^The result.
 mainHandler history errorMeta message page = do
     theory <- runDB $ selectList [] []
     let isRecall = validateSyntax sRecallRaw message == []
@@ -350,11 +422,57 @@ mainHandler history errorMeta message page = do
     let pLines    = strProoflines proof
     let valid    = errorMsgs == []
     divView newhistory valid pLines page theory errorMsgs
- 
-openConnectionCount :: Int
-openConnectionCount = 10
 
-main :: IO ()
-main = runStderrLoggingT $ withSqlitePool "theory.db" openConnectionCount
-    $ \pool -> liftIO $ do
-        warp 3000 $ App pool
+-- |Generates the final web interface, viewable in web browsers such as Firefox.
+divView ::     String                -- ^The history of commands that were used
+                                     --  to build the current proof.
+            -> Bool                  -- ^`True` if the last entered command did
+                                     --  not result in any errors.
+            -> [Text]                -- ^A list of `Text` representations of the
+                                     --  `ProofLine`s constituting the current
+                                     --  proof.
+            -> String                -- ^Indentifies the page to be
+                                     --  displayed (e.g. help). 
+            -> [Entity AxiomBuilder] -- ^List of axiom builders retrieved
+                                     --  from the database.
+            -> [String]              -- ^A list of error messages resulting from
+                                     --  the last entered command.
+            -> HandlerFor App Html
+divView newhistory valid pLines page theory errorMsgs =
+    defaultLayout
+     [whamlet|
+     <form #theform method=post action=@{HomeR}>
+      <div #tablediv>
+         <div #proof .tddiv>
+          ^{proofWidget newhistory valid pLines errorMsgs}
+         <div #info .tddiv>
+          ^{infoWidget page theory}
+      <br>
+      <div #cmd>
+         <input #prompt type=text name=message
+            placeholder="Type Command ..." size="80" autofocus>
+     |]
+
+----------------------------------- deprecated ---------------------------------
+
+tableView newhistory valid pLines page theory errorMsgs =
+    defaultLayout
+     [whamlet|
+     <form #theform method=post action=@{HomeR}>
+      <table width="100%" cellspacing="10" border="0" #outertable>
+       <tbody>
+        <tr #outertabletoptr>
+         <td #outertabletoptd>
+          <table width="100%" cellspacing="0" border="1" #tbl>
+           <tbody>
+            <tr .row>
+             <td #proof valign="top" width="50%">
+              ^{proofWidget newhistory valid pLines errorMsgs}
+             <td #info valign="top" width="50%">
+              ^{infoWidget page theory}
+        <tr #outertablebottom>
+         <td>
+          <div #cmd>
+             <input #prompt type=text name=message
+                placeholder="Type Command ..." size="80" autofocus>
+     |] 

@@ -1,20 +1,28 @@
 \documentclass[notitlepage]{report}
+\listfiles
 \usepackage{mystyle}
 \usepackage{titling}
 \usepackage{standalone}
 \usepackage[scaled=0.95]{DejaVuSans}
 \renewcommand*\familydefault{\sfdefault}
 
-\usepackage[T1]{fontenc}
+%\usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 %\usepackage[scaled=0.85]{DejaVuSansMono}
 \usepackage[scaled=0.95]{DejaVuSansMono}
+
+\usepackage[fencedCode,inlineFootnotes,citations,definitionLists,
+            hashEnumerators,smartEllipses,pipeTables,tableCaptions,
+            hybrid]{markdown}
 
 %\usepackage{showframe}
 \usepackage{etoolbox}
 \makeatletter
 \patchcmd{\@makechapterhead}{\vspace*{50\p@}}{}{}{}
 \patchcmd{\@makeschapterhead}{\vspace*{50\p@}}{}{}{}
+
+\newcommand\m[1]{\mintinline{haskell}{#1}}
+\newcommand\mh[1]{\mintinline{html}{#1}}
 
 \usepackage{pmboxdraw}
 
@@ -47,10 +55,7 @@
 \tableofcontents
 \endgroup
 
-
 \chapter{Introduction}
-\vspace{-1.0cm}\hrulefill%
-
 The purpose of this report is to document the work on the Haskell
 implementation of the Sofia proof assistant, which is based on the earlier
 Python implementation.\footnote{See: %
@@ -59,13 +64,17 @@ The document is work in progress and targets contributors to the project. Hence
 no further introduction to the context of the project is given. Note that the
 given implementation makes use of the \m{Parser} data type, created by
 \textcite{Hutton}, which is available on the web.
+
+\markdownInput{../README.md}
+\pagebreak
+
 \section{Grammar}
 We agreed on the following EBNF\footnote{Extended Backus-Naur Form} of the
 grammar of the Sofia language.
 \begin{figure}[h!]
     {\renewcommand{\arraystretch}{2.0}
     \input{figures/ebnf}}
-    \caption{EBNF of the Sofia language}
+    \caption{EBNF of the Sofia language}\label{fig:EBNFsofia}
 \end{figure}
 
 Detailed information about the representation of formal languages by means of an
@@ -82,11 +91,43 @@ the meaning and/or terminology of the symbols used above is given below.
 \end{itemize}
 \end{multicols}
 
+We will not discuss the various parsers used in this project in detail, but only
+mention the EBNFs of the relevant grammars and refer to the relevant module
+which implements the parser. The parser for the grammar described in
+Figure~\ref{fig:EBNFsofia} is implemented in the \m{SofiaParser} module.
+
 \chapter{Significant Data Structures}
 \input{haddock/SofiaTree}
 
 \chapter{Function Reference Sofia}
 \input{haddock/Sofia}
+
+\chapter{User Interface}
+The web interface through which the user interacts with Sofia provides an input
+field imitating a terminal command line. For the sake of uniformity the proof
+building command to be entered in this interface resemble the Haskell functions
+of the \m{Sofia} module - except for some small adjustments and the fact that no
+partial proof has to be given as the last argument.
+\\\\
+The EBNF for these commands looks as follows:
+\begin{figure}[h!]
+    {\renewcommand{\arraystretch}{2.0}
+    \input{figures/command_ebnf}}
+    \caption{EBNF for the commands of the Sofia
+             user interface}\label{fig:EBNFcmds}
+\end{figure}
+
+When constructing a proof, the command and the history of all commands used to
+build up the currently visible proof are sent via \texttt{POST} to the backend.
+The backend then checks whether all supplied arguments are valid and calculates
+the proof that results from executing all the Haskell functions corresponding to
+the commands in the history and the current command in sequence.
+\\
+There are also some `meta commands', which do not operate on the current proof
+but are rather concerned with the appearance of the user interface, storing the
+current proof as a postulate or loading a proof from the database.
+
+\input{haddock/WebInterface}
 
 \pagebreak
 \begingroup

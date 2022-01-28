@@ -19,7 +19,7 @@ haddock:
 	mkdir -p haddock
 	cd ..
 	haddock --latex --latex-style=mystyle \
-		--title="Sofia/Haskell documentation" -o doc/haddock Sofia.hs
+		--title="Sofia/Haskell documentation" -o doc/haddock WebInterface.hs
 
 fixtex: haddock
 	cd haddock
@@ -33,7 +33,9 @@ fixtex: haddock
 			 e=gensub(/\\vbox/, "", "g", d);
 			 f=gensub(/^\\end\{verbatim\}\}$$/, "\\\\end{verbatim}}\\\\vspace{-0.5cm}", "g", e);
 			 g=gensub(/^\\begin\{quote\}$$/, "\\\\begin{quote}\\\\vbox%", "g", f);
-			 print g}' $$f > $$(basename $$f .tex)_fixed.tex
+			 h=gensub(/^\\haddockbeginheader$$/, "\\\\begin{ignore}%", "g", g);
+			 i=gensub(/^\\haddockendheader$$/, "\\\\end{ignore}%", "g", h);
+			 print i}' $$f > $$(basename $$f .tex)_fixed.tex
 		rm $$f
 		mv $$(basename $$f .tex)_fixed.tex $$f
 	done

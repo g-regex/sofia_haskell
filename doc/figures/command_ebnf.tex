@@ -1,0 +1,74 @@
+\documentclass{standalone}
+
+\usepackage[utf8]{inputenc}
+\usepackage{mathtools} 
+\usepackage{booktabs}
+
+\usepackage[scaled=0.95]{DejaVuSans}
+\renewcommand*\familydefault{\sfdefault}
+
+\usepackage[scaled=0.95]{DejaVuSansMono}
+
+\renewcommand\baselinestretch{1.2}
+
+\begin{document}
+
+\newcommand{\command}{\langle\texttt{command}\rangle}
+\newcommand{\assume}{\langle\texttt{assume}\rangle}
+\newcommand{\restate}{\langle\texttt{restate}\rangle}
+\newcommand{\synapsis}{\langle\texttt{synapsis}\rangle}
+\newcommand{\apply}{\langle\texttt{apply}\rangle}
+\newcommand{\rightsub}{\langle\texttt{rightsub}\rangle}
+\newcommand{\leftsub}{\langle\texttt{leftsub}\rangle}
+\newcommand{\recall}{\langle\texttt{recall}\rangle}
+\newcommand{\intgr}{\langle\texttt{int}\rangle}
+\newcommand{\pair}{\langle\texttt{pair}\rangle}
+\newcommand{\pairlist}{\langle\texttt{pairlist}\rangle}
+\newcommand{\intlist}{\langle\texttt{intlist}\rangle}
+\newcommand{\strlist}{\langle\texttt{strlist}\rangle}
+\newcommand{\strg}{\langle\texttt{string}\rangle}
+\newcommand{\character}{\langle\texttt{character}\rangle}
+
+\begin{tabular}{lll}
+$\command$      & $\coloneqq$ &	$\assume \Big| \restate \Big| \recall \Big|
+                                 \synapsis \Big| \apply \Big| \rightsub \Big|
+                                 \leftsub$                                    \\
+$\assume$       & $\coloneqq$ &	$\textsf{`assume'}␣\strg$                     \\
+$\recall$       & $\coloneqq$ &	$\textsf{`recall'}␣\intgr␣\strlist$           \\
+$\restate$      & $\coloneqq$ &	$\textsf{`restate'}␣\pairlist␣\strg$          \\
+$\synapsis$     & $\coloneqq$ &	$\textsf{`synapsis'}$                         \\
+$\apply$        & $\coloneqq$ &	$\textsf{`apply'}␣\intgr␣\pairlist␣\intgr$    \\
+$\rightsub$     & $\coloneqq$ &	$\textsf{`rightsub'}␣\intgr␣\intgr␣\intlist␣
+                                 \intgr␣\intgr$                               \\
+$\leftsub$      & $\coloneqq$ &	$\textsf{`leftsub'}␣\intgr␣\intgr␣\intlist␣
+                                 \intgr␣\intgr$                               \\
+$\pair$         & $\coloneqq$ & $\textsf{`('} \intgr \textsf{`,'} \intgr
+                                 \textsf{`)'}$                                \\
+$\pairlist$     & $\coloneqq$ & $\textsf{`[]'}\Big|\textsf{`['} \pair
+                                 \Big\{\textsf{`,'} \pair
+                                 \Big\} \textsf{`]'}$                         \\
+$\intlist$      & $\coloneqq$ & $\textsf{`[]'}\Big|\textsf{`['} \intgr
+                                 \Big\{\textsf{`,'} \intgr
+                                 \Big\} \textsf{`]'}$                         \\
+$\strlist$      & $\coloneqq$ & $\textsf{`[]'}\Big|\textsf{`['} \strg
+                                 \Big\{\textsf{`,'} \strg
+                                 \Big\} \textsf{`]'}$                         \\
+$\intgr$      	& $\coloneqq$ & $\Big( \textsf{`0'} \Big| \dots \Big|
+                                 \textsf{`9'} \Big)
+                                 \Big\{
+                                 \textsf{`0'} \Big| \dots \Big| \textsf{`9'}
+                                 \Big\}$                                      \\
+$\strg$         & $\coloneqq$ & $\textsf{`"'} \Big\{ \character \Big\}
+                                 \textsf{`"'}$                                \\
+$\character$	& $\coloneqq$ & $\textsf{`0'} \Big| \dots \Big| \textsf{`9'}
+                                 \Big| \textsf{`A'} \Big| \dots \Big|
+                                 \textsf{`Z'} \Big| \textsf{`0'} \Big| \dots
+                                 \Big| \textsf{`9'} \Big| \textsf{`+'} \Big|
+                                 \textsf{`-'} \Big| \textsf{`/'}
+                                 \Big| \textsf{`*'} \Big|\textsf{`\%'} \Big|
+                                 \textsf{`\textasciicircum'} \Big| \textsf{`\&'}
+                                 \Big| \textsf{`.'} \Big|\textsf{`?'} \Big|
+                                 \textsf{`!'} \Big| \textsf{`\_'}$
+\end{tabular}
+
+\end{document}

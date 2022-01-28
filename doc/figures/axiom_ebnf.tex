@@ -1,0 +1,53 @@
+\documentclass{standalone}
+
+\usepackage[utf8]{inputenc}
+\usepackage{mathtools} 
+\usepackage{booktabs}
+
+\usepackage[scaled=0.95]{DejaVuSans}
+\renewcommand*\familydefault{\sfdefault}
+
+\usepackage[scaled=0.95]{DejaVuSansMono}
+
+\renewcommand\baselinestretch{1.2}
+
+\begin{document}
+
+\newcommand{\axiom}{\langle\texttt{axiom}\rangle}
+\newcommand{\builder}{\langle\texttt{builder}\rangle}
+\newcommand{\leaf}{\langle\texttt{leaf}\rangle}
+\newcommand{\lst}{\langle\texttt{list}\rangle}
+\newcommand{\itm}{\langle\texttt{item}\rangle}
+\newcommand{\intgr}{\langle\texttt{int}\rangle}
+\newcommand{\strg}{\langle\texttt{string}\rangle}
+\newcommand{\character}{\langle\texttt{character}\rangle}
+
+\begin{tabular}{lll}
+$\axiom$        & $\coloneqq$ &	$\Big( \textsf{`\{'} \strg \textsf{`,'} \intgr
+                                 \textsf{`,'} \lst \textsf{`\}'}\Big) \Big|
+                                 \Big( \textsf{`\{'} \intgr \textsf{`,'} \intgr
+                                 \textsf{`,'} \itm \textsf{`\}'}\Big)$        \\
+$\lst $         & $\coloneqq$ &	$\textsf{`['} \itm \Big\{\textsf{`,'}
+                                 \itm \Big\}\textsf{`]'}$                     \\
+$\itm $         & $\coloneqq$ &	$\intgr \Big| \strg \Big| \axiom$             \\
+$\intgr$      	& $\coloneqq$ & $\Big( \textsf{`0'} \Big| \dots \Big|
+                                 \textsf{`9'} \Big)
+                                 \Big\{
+                                 \textsf{`0'} \Big| \dots \Big| \textsf{`9'}
+                                 \Big\}$                                      \\
+$\strg$         & $\coloneqq$ & $\textsf{`"'} \Big\{
+                                 \textsf{`['} \Big| \textsf{`]'} \Big|
+                                 \character \Big\}
+                                 \textsf{`"'}$                                \\
+$\character$	& $\coloneqq$ & $\textsf{`0'} \Big| \dots \Big| \textsf{`9'}
+                                 \Big| \textsf{`A'} \Big| \dots \Big|
+                                 \textsf{`Z'} \Big| \textsf{`0'} \Big| \dots
+                                 \Big| \textsf{`9'} \Big| \textsf{`+'} \Big|
+                                 \textsf{`-'} \Big| \textsf{`/'}
+                                 \Big| \textsf{`*'} \Big|\textsf{`\%'} \Big|
+                                 \textsf{`\textasciicircum'} \Big| \textsf{`\&'}
+                                 \Big| \textsf{`.'} \Big|\textsf{`?'} \Big|
+                                 \textsf{`!'} \Big| \textsf{`\_'}$
+\end{tabular}
+
+\end{document}

@@ -15,7 +15,7 @@ specifically for the Sofia proof assistant.
 
 module SofiaTree
     (TypeOfNode (Atom, Statement, Formula, Implication, Equality, Symbol,
-                 Placeholder, Error),
+                 Error),
      Tree,
      SofiaTree,
      DeductionRule (Assumption, Recall, Selfequate, Restate, Synapsis, Apply,
@@ -30,30 +30,34 @@ module SofiaTree
      phead,
      preverse,
 
-     -- Extracting parameters
+     -- * Extracting parameters
+
+     -- `SofiaTreeClass` instance functions.
      getAtom,
      getSubtrees,
      getSymbol,
+     toType,
+
      numLine,
      numDepth,
      treeFromLn,
      ruleFromLn,
-     toSofiaTree,
-     toType,
 
      -- * Converting types
      toListFromProof,
      toProofFromList,
 
+     -- * Generating data structures
      newSofiaTree,
      newProof,
      newLine,
 
      treeEQ,
      treeIMP,
+     treeTRUTH,
+     treeERR,
      treeSTMTform,
-     treeSTMT,
-     treeTRUTH
+     treeSTMT
      ) where
 
 import ListHelpers
@@ -70,7 +74,7 @@ toString (x:xs) = (printable x) ++ (toString xs)
 
 -- |Nodes in a `SofiaTree` must have a type not equal to `Error`.
 data TypeOfNode = Atom | Statement | Formula | Implication | Equality | Symbol |
-                  Placeholder | Error
+                  Error
                   deriving (Show -- ^Membership of the `Show` class is derived
                                  --  (for debugging purposes).
                            , Eq  -- ^Membership of the `Eq` class is derived. 
@@ -94,7 +98,6 @@ instance (Printable a, Show a, SType b, Show b) => Show (Tree a b) where
     show (Node a b c) =
         case toType b of
              Error          -> "Error" 
-             Placeholder    -> "..." 
              Atom           -> "[" ++ showtree c ++ "]"
              Implication    -> ":"
              Equality       -> "="
@@ -252,46 +255,71 @@ toListFromProof ::      Proof       -- ^The `Proof` to be converted.
 toListFromProof PListEnd = []
 toListFromProof (PListItem pl pls) = pl : (toListFromProof pls)
 
-newProof :: Proof
-newProof = PListEnd
-
-newLine :: Int -> Int -> SofiaTree -> DeductionRule -> ProofLine
-newLine a b c d = Line a b c d
-
+-- |Extracts the line number from a given `ProofLine`.
 numLine :: ProofLine -> Int
 numLine (Line a _ _ _) = a
 
+-- |Extracts the assumption depth from a given `ProofLine`.
 numDepth :: ProofLine -> Int
 numDepth (Line _ b _ _) = b
 
+-- |Extracts the `SofiaTree` from a given `ProofLine`.
 treeFromLn :: ProofLine -> SofiaTree
 treeFromLn (Line _ _ c _) = c
 
--- NOTE: currently not in use
+-- |Extracts the `DeductionRule` from a given `ProofLine`.
 ruleFromLn :: ProofLine -> DeductionRule
 ruleFromLn (Line _ _ _ d) = d
+
+-- |Returns an empty `Proof` containing no `ProofLine`s.
+newProof :: Proof
+newProof = PListEnd
+
+-- |Returns a `ProofLine` made up of the given parameters.
+newLine ::      Int             -- ^The number of the line in the `Proof`.
+             -> Int             -- ^The assumption depth.
+             -> SofiaTree       -- ^The `SofiaTree` contained in the
+                                --  `ProofLine`.
+             -> DeductionRule   -- ^The `DeductionRule` justifying the
+                                --  occurrence of the `ProofLine` in the
+                                --  `Proof`.
+             -> ProofLine       -- ^The resulting `ProofLine`.
+newLine a b c d = Line a b c d
 
 pdo :: ([ProofLine] -> a) -> Proof -> a
 pdo func proof = func (toListFromProof proof)
 
 --------------------------------------------------------------------------------
 
+-- |A `SofiaTree` consisting only of an `Equality` formultor. To be used as a
+-- shorthand for the formulator in other functions.
 treeEQ :: SofiaTree
 treeEQ = (newSofiaTree [] Equality [])
 
+-- |A `SofiaTree` consisting only of an `Implication` formultor. To be used as a
+-- shorthand for the formulator in other functions.
 treeIMP :: SofiaTree
 treeIMP = (newSofiaTree [] Implication [])
 
+-- |The `Error` tree resulting from a parsing error.
+treeERR :: SofiaTree
+treeERR = newSofiaTree "" Error []
+
+-- |A `SofiaTree` comprised of an atomic empty statement.
 treeTRUTH :: SofiaTree
 treeTRUTH = newSofiaTree [] Statement [newSofiaTree[] Atom []]
 
-treeSTMTform :: [SofiaTree] -> SofiaTree
+-- |Returns a `SofiaTree` comprised of an atomic statement containing a formula. 
+treeSTMTform ::    [SofiaTree]  -- ^The list of subtrees making up the formula.
+                -> SofiaTree    -- ^The resulting statement.
 treeSTMTform ts =
         newSofiaTree []
                      Statement
                      [newSofiaTree [] Atom [newSofiaTree [] Formula ts]]
 
-treeSTMT :: [SofiaTree] -> SofiaTree
+-- |Returns a statement comrprised of a list of atoms.
+treeSTMT ::     [SofiaTree] -- ^The list of atoms contained in the statement.
+             -> SofiaTree   -- ^The resulting statement.
 treeSTMT ts =
         newSofiaTree []
                      Statement

@@ -10,12 +10,10 @@ Maintainer  :
 Stability   : experimental
 Portability : POSIX
 
-The `Sofia` module defines the functions which are intended to be used by
-a user to interact with Sofia. At a later stage it might, however, be
-desirable to create an improved user interface for this purpose.
+The `Sofia` module defines the core functions of the proof assistant.
 -}
 module Sofia (
-    -- * Naming Convention
+    -- * Naming convention
     -- $naming
 
     -- * General commands
@@ -71,19 +69,16 @@ module Sofia (
     treeSubstOneSymbol,
 
     -- *Validation
-    showErrors,
     ErrorCodes,
+    showErrors,
     validateAssume,
     validateRecall,
     validateAxiomParams,
     validateSelfequate,
     validateRestate,
-    validateSynapsis,
     validateApply,
+    validateSynapsis,
     validateSubst
-
-    -- *Examples
-    -- $examples
 ) where
 
 --------------------------- Using Graham Hutton's code -------------------------
@@ -323,6 +318,16 @@ atomsScope ls = atomsFromStmts (treesScope ls)
 --
 -- The resulting lists contain all trees/atoms from lines 1, 2 and
 -- 6 respectively.
+
+ex8_1 = assume "[X][[x]:[[[x] in [X]]=[[[x] in [x]]:[False[]]]]]" newProof
+ex8_2 = apply 1 [(1,1)] 2 ex8_1
+ex8_3 = assume "[[X] in [X]]" ex8_2
+ex8_4 = rightsub 2 3 [1..] 1 1 ex8_3
+ex8_5 = apply 4 [] 1 ex8_4
+ex8_6 = synapsis ex8_5
+ex8_7 = leftsub 2 6 [1..] 1 1 ex8_6
+ex8_8 = apply 6 [] 1 ex8_7
+ex8_9 = synapsis ex8_8
 
 ---------------------- functions to extract variables --------------------------
 -- $variables
@@ -662,6 +667,13 @@ postulate cs cs' = (treeParse cs, cs')
 
 --------------------------------- Validation -----------------------------------
 
+-- |The data type `ErrorCodes` is a list of ordered pairs `[(Int, String)]`
+-- where the `Int` identifies the type of the occurred error and the `String` is
+-- to be used as a parameter for the to be generated error message. An empty
+-- list corresponds to no errors.
+type ErrorCodes = [(Int, String)]
+
+-- |Generates a list of error messages from given `ErrorCodes`.
 showErrors :: ErrorCodes -> [String]
 showErrors ecs = [showErr ec | ec <- ecs]
    where
@@ -679,12 +691,12 @@ showErrors ecs = [showErr ec | ec <- ecs]
         10 -> "Cannot perform synapsis at depth 0."
         11 -> "One of the provided parameters is not a statement."
 
-type ErrorCodes = [(Int, String)]
-
-treeErr :: SofiaTree
-treeErr = newSofiaTree "" Error []
-
-validateIndices :: [(Int, Int)] -> Proof -> ErrorCodes
+-- |Checks whether atoms at given positions (as /(line, column)/ pairs) exist.
+validateIndices ::      [(Int, Int)]        -- ^The list of /(line, column)/
+                                            --  pairs.
+                     -> Proof               -- ^The `Proof` in which the atoms
+                                            --  must exist.
+                     -> ErrorCodes          -- ^Potentially found errors.
 validateIndices iis p = nolines ++ nocols
     where
         p'      = toListFromProof p 
@@ -694,33 +706,68 @@ validateIndices iis p = nolines ++ nocols
                   (i, i') <- iis,
                   i <= length p',
                   i > 0,
-                  getAtom i' (treeFromLn $ getIndex i p') == treeErr]
+                  getAtom i' (treeFromLn $ getIndex i p') == treeERR]
 
-validateAssume :: String -> ErrorCodes
-validateAssume cs = if t == treeErr then [(2, "")] else
+-- |Checks whether the parameters passed to `assume` are valid, i.e.\ whether
+-- the provided `String` is a syntactically correct `Sofia` statement.
+validateAssume ::   String      -- ^The `String` parametrising `assume`.
+                 -> ErrorCodes  -- ^Potentially found errors.
+validateAssume cs = if t == treeERR then [(2, "")] else
                         if matchesPattern patternStmt t
                             then [] else [(3, "")]
                         where t = treeParse cs
 
-validateRecall :: SofiaTree -> ErrorCodes
-validateRecall t = if t == treeErr then [(2, "")] else
+-- |Checks whether the parameters passed to `recall` are valid, i.e.\ whether
+-- the provided `SofiaTree` is a statement.
+validateRecall ::      SofiaTree   -- ^The `SofiaTree` contained in the
+                                   -- `Postulate` parametrising `recall`.
+                    -> ErrorCodes  -- ^Potentially found errors.
+validateRecall t = if t == treeERR then [(2, "")] else
                         if matchesPattern patternStmt t
                             then [] else [(3, "")]
 
-validateAxiomParams :: [String] -> ErrorCodes
+-- |Checks whether the parameters of an `AxiomSchema` (see `SofiaAxiomParser`
+-- module) are syntactically correct `Sofia` statements.
+validateAxiomParams ::   [String]    -- ^The `String`s parametrising an
+                                     -- `AxiomSchema`.
+                      -> ErrorCodes  -- ^Potentially found errors.
 validateAxiomParams css =
     if and $ map (matchesPattern patternStmt) $ map treeParse css
     then []
     else [(11, "")]
 
-validateSelfequate :: (Int, Int) -> Proof -> ErrorCodes
+-- |Checks whether the parameters passed to `selfequate` are valid, i.e.\
+-- whether the atom at a given position (as /(line, column)/ pair) exists.
+validateSelfequate ::   (Int, Int)  -- ^The claimed position of an atom.
+                     -> Proof       -- ^The `Proof` in which the atom must be
+                                    --  found.
+                     -> ErrorCodes  -- ^Potentially found errors.
 validateSelfequate ii p = validateIndices [ii] p
 
-validateRestate :: [(Int, Int)] -> [String] -> Proof -> ErrorCodes
+-- |Checks whether the parameters passed to `restate` are valid, i.e.\
+-- whether atoms at given positions (as /(line, column)/ pairs) exist and the
+-- provided list of `String`s contains only valid variable names.
+validateRestate ::      [(Int, Int)] -- ^The list of /(line, column)/ pairs.
+                     -> [String]     -- ^The list of new variable names.
+                     -> Proof        -- ^The `Proof` in which the atoms must be
+                                     --  found
+                     -> ErrorCodes   -- ^Potentially found errors.
 validateRestate iis css p = validateIndices iis p ++
                             [(6, cs) | cs <- css, not $ isValidSymbol cs]
 
-validateApply :: Int -> [(Int, Int)] -> Int -> Proof -> ErrorCodes
+
+-- |Checks whether the parameters passed to `apply` are valid, i.e.\
+-- whether the given coordinates actually refer to an implication and a list of
+-- atoms in a specified `Proof`.
+validateApply ::    Int          -- ^The line of the implication to be applied.
+                 -> [(Int, Int)] -- ^List of positions of the form
+                                 --  /(line, column)/ of the atoms used for the
+                                 --  replacements.
+                 -> Int          -- ^The column of the implication to be
+                                 --  applied.
+                 -> Proof        -- ^The `Proof` in which the respective atoms
+                                 --  and the implication must exist.
+                 -> ErrorCodes   -- ^Potentially found errors.
 validateApply i iis i' p = validateIndices iis p ++ validImp
    where
     existsImp = validateIndices [(i, i')] p
@@ -732,13 +779,26 @@ validateApply i iis i' p = validateIndices iis p ++ validImp
                 else
                     existsImp
 
-validateSynapsis :: Proof -> ErrorCodes
+-- |Checks whether a synapsis can be performed on a given `Proof`, i.e.\ whether
+-- the assumption depth is greater than 0.
+validateSynapsis ::     Proof       -- ^The `Proof` on which the synapsis is to
+                                    --  be performed.
+                     -> ErrorCodes  -- ^Potentially found errors.
 validateSynapsis p = case p of 
                      PListEnd -> [(9, "")]
                      _        ->  if (numDepth $ last $ toListFromProof p) == 0
                                   then [(10, "")] else []
 
-validateSubst :: Int -> Int -> Int -> Int -> Proof -> ErrorCodes
+-- |Checks whether the parameters passed to `leftsub` or `rightsub` are valid,
+-- i.e.\ whether the coordinates refer to an equality and a statement
+-- respectively.
+validateSubst ::    Int         -- ^The line number of the equality.
+                 -> Int         -- ^The line number of the statement.
+                 -> Int         -- ^The column number of the equality.
+                 -> Int         -- ^The column number of the statement.
+                 -> Proof       -- ^The `Proof` in which the statement and the
+                                --  equality must be found.
+                 -> ErrorCodes  -- ^Potentially found errors.
 validateSubst eqx sx eqy sy p = validateIndices [(sx, sy)] p ++ validEq
    where
     existsEq  = validateIndices [(eqx, eqy)] p
@@ -906,7 +966,7 @@ apply line pos_list col p = if valid then p <+> l else p
 -- the equality in a given statement.
 rightsub ::     Int         -- ^The line number of the equality.
              -> Int         -- ^The line number of the statement.
-             -> [Int]       -- ^The list of indices
+             -> [Int]       -- ^The list of indices.
              -> Int         -- ^The column number of the equality.
              -> Int         -- ^The column number of the statement.
              -> Proof       -- ^The `Proof` to which the generated `ProofLine`
@@ -933,7 +993,7 @@ rightsub sub_line tgt_line is sub_col tgt_col p = if valid then p <+> l else p
 -- a given statement.
 leftsub ::      Int         -- ^The line number of the equality.
              -> Int         -- ^The line number of the statement.
-             -> [Int]       -- ^The list of indices
+             -> [Int]       -- ^The list of indices.
              -> Int         -- ^The column number of the equality.
              -> Int         -- ^The column number of the statement.
              -> Proof       -- ^The `Proof` to which the generated `ProofLine`
