@@ -223,7 +223,7 @@ infoWidget page theory =
             <table #theory>
                 <tr>
                  <th>ID
-                 <th>Name
+                 <th>Rubric: Name
                  <th>Params
                  <th>Description
                 $forall Entity id ab <- theory
