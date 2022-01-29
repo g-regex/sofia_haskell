@@ -1,18 +1,17 @@
-{-# OPTIONS_HADDOCK prune #-}
-
 {-|
 Module      : SofiaParser
-Description :
-Copyright   :
-License     :
-Maintainer  :
+Description : Part of the Sofia proof assistant.
+Copyright   : Gregor Feierabend
+License     : GNU General Public License v3 (GPLv3)
+Maintainer  : Gregor Feierabend
 Stability   : experimental
 Portability : POSIX
 
 The parser for the Sofia proof assistant.
 -}
 
---module SofiaParser where
+{-# OPTIONS_HADDOCK prune #-}
+
 module SofiaParser (treeParse, legalSymbolChars, isValidSymbol) where
 
 import Parsing

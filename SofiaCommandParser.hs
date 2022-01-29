@@ -1,16 +1,16 @@
-{-# OPTIONS_HADDOCK prune #-}
-
 {-|
 Module      : SofiaCommandParser
-Description :
-Copyright   :
-License     :
-Maintainer  :
+Description : Part of the Sofia proof assistant.
+Copyright   : Gregor Feierabend
+License     : GNU General Public License v3 (GPLv3)
+Maintainer  : Gregor Feierabend
 Stability   : experimental
 Portability : POSIX
 
 The parser for commands of the Sofia proof assistant.
 -}
+
+{-# OPTIONS_HADDOCK prune #-}
 
 module SofiaCommandParser (commandParse, evalList, validateSyntax,
         validateSemantics, sValidation, sCommand, sDesc, sRecallRaw,

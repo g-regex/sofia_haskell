@@ -1,3 +1,13 @@
+{-|
+Module      : ListHelpers
+Description : Part of the Sofia proof assistant.
+Copyright   : Gregor Feierabend
+License     : GNU General Public License v3 (GPLv3)
+Maintainer  : Gregor Feierabend
+Stability   : experimental
+Portability : POSIX
+-}
+
 module ListHelpers where
 
 intersect :: (Eq a) => [[a]] -> [a]

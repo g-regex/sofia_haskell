@@ -1,11 +1,9 @@
-{-# OPTIONS_HADDOCK prune #-}
-
 {-|
 Module      : SofiaAxiomParser
-Description :
-Copyright   :
-License     :
-Maintainer  :
+Description : Part of the Sofia proof assistant.
+Copyright   : Gregor Feierabend
+License     : GNU General Public License v3 (GPLv3)
+Maintainer  : Gregor Feierabend
 Stability   : experimental
 Portability : POSIX
 
@@ -14,6 +12,8 @@ type to store recursive definitions of axiom schemas. Further, it contains
 functions to parse `String` representations of `AxiomSchema`s and functions to
 create `Postulate`s from `AxiomSchema`s.
 -}
+
+{-# OPTIONS_HADDOCK prune #-}
 
 module SofiaAxiomParser
         (

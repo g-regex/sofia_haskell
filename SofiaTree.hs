@@ -1,17 +1,17 @@
-{-# OPTIONS_HADDOCK prune #-}
-
 {-|
 Module      : SofiaTree
-Description :
-Copyright   :
-License     :
-Maintainer  :
+Description : Part of the Sofia proof assistant.
+Copyright   : Gregor Feierabend
+License     : GNU General Public License v3 (GPLv3)
+Maintainer  : Gregor Feierabend
 Stability   : experimental
 Portability : POSIX
 
 The `SofiaTree` module contains definitions of data types created
 specifically for the Sofia proof assistant.
 -}
+
+{-# OPTIONS_HADDOCK prune #-}
 
 module SofiaTree
     (TypeOfNode (Atom, Statement, Formula, Implication, Equality, Symbol,

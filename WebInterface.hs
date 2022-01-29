@@ -1,3 +1,13 @@
+{-|
+Module      : WebInterface
+Description : Part of the Sofia proof assistant.
+Copyright   : Gregor Feierabend
+License     : GNU General Public License v3 (GPLv3)
+Maintainer  : Gregor Feierabend
+Stability   : experimental
+Portability : POSIX
+-}
+
 {-# LANGUAGE EmptyDataDecls             #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GADTs                      #-}
@@ -14,18 +24,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 {-# OPTIONS_HADDOCK prune #-}
---{-# OPTIONS_HADDOCK ignore-exports #-}
-
-{-|
-Module      : WebInterface
-Description :
-Copyright   :
-License     :
-Maintainer  :
-Stability   : experimental
-Portability : POSIX
-
--}
 
 module WebInterface (
         -- * Helper functions

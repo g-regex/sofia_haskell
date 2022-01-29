@@ -1,6 +1,7 @@
-{-# OPTIONS_HADDOCK hide, prune, ignore-exports #-}
 -- Functional parsing library from chapter 13 of Programming in Haskell,
 -- Graham Hutton, Cambridge University Press, 2016.
+
+{-# OPTIONS_HADDOCK hide #-}
 
 module Parsing (module Parsing, module Control.Applicative) where
 
