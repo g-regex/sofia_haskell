@@ -27,8 +27,8 @@ Portability : POSIX
 
 The `SofiaAxiomParser` module contains the definition of the `AxiomSchema` data
 type to store recursive definitions of axiom schemas. Further, it contains
-functions to parse `String` representations of `AxiomSchema`s and functions to
-create `Postulate`s from `AxiomSchema`s.
+functions to parse `String` representations of `AxiomSchema`ta and functions to
+create `Postulate`s from `AxiomSchema`ta.
 -}
 
 {-# OPTIONS_HADDOCK prune #-}
@@ -56,14 +56,14 @@ data AxiomSchema = ReplaceString String Int [AxiomSchema]
                    -- [[]]. To refer to these placeholders, the second parameter
                    -- must be 0; otherwise the second parameter must be greater
                    -- than zero and refers to an /external/ parameter. The last
-                   -- parameter is a list of `AxiomSchema`s. These can be
+                   -- parameter is a list of `AxiomSchema`ta. These can be
                    -- understood as already recursively processed and hence as
                    -- valid `SofiaTree`s. When an axiom builder function is
                    -- applied to the `ReplaceString`, each occurrence of a
                    -- placeholder or an external parameter (as indicated by the
                    -- `Int`) will be replaced by one of the `SofiaTree`s
                    -- resulting from recursively processing the list of
-                   -- `AxiomSchema`s (from left to right).
+                   -- `AxiomSchema`ta (from left to right).
                    | ReplaceAll Int Int AxiomSchema
                    -- ^This type of axiom schema directly refers to an
                    -- /external/ parameter by the first `Int`. Occurrences of a

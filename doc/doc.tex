@@ -162,14 +162,14 @@ Each entry as an auto-incrementing (default setting) \ms{"id"} as the primary
 key. Further, each entry can be identified by a \emph{unique} combination of a
 \ms{"rubric"} and a \ms{"name"} (e.g.\ \texttt{Arithmetic} and
 \texttt{Induction}). The column \ms{"schema"} contains string representations of
-\m{AxiomSchema}s (see Section~\ref{sec:axiom_schemas}). The column \ms{"params"}
-contains the number of parameters required by the \m{AxiomSchema} - this value
-is determined by the \m{AxiomSchema}, but is stored for convenience in the table
-as well. The \ms{"desc"} column contains some string containing a human readable
-description of the axiom builder for the user. Finally, the \ms{"hist"} column
-may contain a history of commands that where used to obtain a postulate (or
-example proof, theorem, etc.); in the case of axioms the field contains the
-empty string.\\\\
+\m{AxiomSchema}ta (see Section~\ref{sec:axiom_schemas}). The column
+\ms{"params"} contains the number of parameters required by the \m{AxiomSchema}
+- this value is determined by the \m{AxiomSchema}, but is stored for convenience
+in the table as well. The \ms{"desc"} column contains some string containing a
+human readable description of the axiom builder for the user. Finally, the
+\ms{"hist"} column may contain a history of commands that where used to obtain a
+postulate (or example proof, theorem, etc.); in the case of axioms the field
+contains the empty string.\\\\
 Using the \texttt{Persistent} library\footnote{A helpful introduction to
 \texttt{Persistent} can be found here:
 \url{https://www.yesodweb.com/book/persistent}}, a Haskell data type is created
@@ -203,7 +203,7 @@ functions.
 \pagebreak
 \section{Axiom schemas}\label{sec:axiom_schemas}
 \input{haddock/SofiaAxiomParser}
-The syntax for encoding \m{AxiomSchema}s as strings is defined by the following
+The syntax for encoding \m{AxiomSchema}ta as strings is defined by the following
 EBNF:
 \begin{figure}[h!]
     {\renewcommand{\arraystretch}{2.0}
@@ -256,7 +256,7 @@ be built. Consider the following such list:
 
 The integer 0 in the outermost \m{ReplaceString} tells us to replace all
 occurrences of \texttt{[[]]} with the \m{SofiaTree}s resulting from recursively
-processing the \m{AxiomSchema}s in the list parametrising \m{ReplaceString}. The
+processing the \m{AxiomSchema}ta in the list parametrising \m{ReplaceString}. The
 first element in that list is \m{Final 2}, which refers to the second
 \emph{external} parameter, namely \texttt{[m][k]}. The second element is of type
 \m{ReplaceAll} and tells us that all occurrences of the third \emph{external}

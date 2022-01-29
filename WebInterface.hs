@@ -154,7 +154,7 @@ linesFromHist ::    [String]        -- ^A list of user interface commands.
 linesFromHist hist = toListFromProof $ evalList hist
 
 -- |Given a list of `ProofLine`s, a pair containing two `String`s is returned.
--- The first `String` is a representation of the `AxiomScheme` (see
+-- The first `String` is a representation of the `AxiomSchema` (see
 -- `SofiaAxiomParser` module) generating the `Postulate` resulting
 -- from the given proof. The second `String` is a simple description of the
 -- `Postulate` based on the `String` representation of the underlying
