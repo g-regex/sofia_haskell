@@ -90,7 +90,8 @@ toString :: Printable a => [a] -> String
 toString [] = ""
 toString (x:xs) = (printable x) ++ (toString xs)
 
--- |Nodes in a `SofiaTree` must have a type not equal to `Error`.
+-- |Nodes in a `SofiaTree` can have any of the following types. A node has type
+-- `Error`, when a parsing error occurred.
 data TypeOfNode = Atom | Statement | Formula | Implication | Equality | Symbol |
                   Error
                   deriving (Show -- ^Membership of the `Show` class is derived
