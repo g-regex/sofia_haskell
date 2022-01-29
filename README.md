@@ -32,7 +32,7 @@ and then start it with:
 ```shell
 $ ./WebInterface.hs
 ```
-Alternatively you can also run it with
+Alternatively you can also run it with:
 ```shell
 $ runhaskell WebInterface.hs
 ```
