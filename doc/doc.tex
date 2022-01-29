@@ -1,6 +1,10 @@
 \documentclass[notitlepage]{report}
-\listfiles
+%\listfiles
 \usepackage{mystyle}
+\raggedbottom
+\def\footnoterule{\vfill % added this
+   \kern-3pt\hrule width 2truein \kern 2.6pt}
+
 \usepackage{titling}
 \usepackage{standalone}
 \usepackage[scaled=0.95]{DejaVuSans}
@@ -182,15 +186,98 @@ data AxiomBuilder
  \end{tabulary}}
 \end{haddockdesc}
 
+From within the handler functions requests to the database backend (SQLite) are
+directly converted to an \m{Entity}\footnote{More information about this data
+type can be found in the \texttt{Persistent} documentation.} of \m{AxiomBuilder},
+which can then conveniently be accessed and processed further by other Haskell
+functions.
+
 \pagebreak
 \section{Axiom schemas}\label{sec:axiom_schemas}
 \input{haddock/SofiaAxiomParser}
-The EBNF for axiom schemas looks as follows:
+The syntax for encoding `AxiomSchema`s as strings is defined by the following
+EBNF:
 \begin{figure}[h!]
     {\renewcommand{\arraystretch}{2.0}
     \input{figures/axiom_ebnf}}
     \caption{EBNF for axiom schemas}\label{fig:EBNFaxiom}
 \end{figure}
+
+As Figure~\ref{fig:EBNFaxiom} shows, an $\langle \texttt{axiom} \rangle$ is either
+of the type \m{ReplaceString} or \m{ReplaceAll}. These are parametrised either
+by an $\langle \texttt{item} \rangle$ or a $\langle \texttt{list} \rangle$
+of $\langle \texttt{item} \rangle$s. Each $\langle \texttt{item} \rangle$ is
+either an $\langle \texttt{int} \rangle$, a $\langle \texttt{string} \rangle$
+or again an $\langle \texttt{axiom} \rangle$, so any type of \m{AxiomSchema}.
+\\\\
+Let us look at an example. The axiom schema \texttt{Induction} can be defined as
+follows:
+\begin{quote}\vbox%
+{\haddockverb\begin{verbatim}
+{`[ [[]] [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:[ [[]] [ [[]] nat]: [[]] ]]`, 0,
+  [ 2, {1, 3, `[0[]]`}, 3, 3, 1, {1, 3, {`[1+[[]]]`, 0, [3]}}, 3, 3, 1]}
+\end{verbatim}}
+\end{quote}
+
+When parsed, this translates to
+\begin{minted}{haskell}
+induction = ReplaceString ("[ [[]] [[]] [ [[]] [ [[]] nat] [[]] : [[]] ]:" ++
+                           "[ [[]] [ [[]] nat]: [[]] ]]") 0
+                          [
+                          Final 2,
+                          ReplaceAll 1 3 (FinalString "[0[]]"),
+                          Final 3,
+                          Final 3,
+                          Final 1,
+                          ReplaceAll 1 3
+                            (
+                            ReplaceString "[1+[[]]]" 0 [Final 3]
+                            ),
+                          Final 3,
+                          Final 3,
+                          Final 1
+                          ]
+\end{minted}
+
+Together with a list of three \emph{external} parameters (note that 3 is the
+highest number occurring in the definition of \texttt{Induction}) an axiom can
+be built. Consider the following such list:
+\begin{minted}{haskell}
+["[blabla[n][m][k]]", "[m][k]", "[n]"]
+\end{minted}
+
+The integer 0 in the outermost \m{ReplaceString} tells us to replace all
+occurrences of \texttt{[[]]} with the \m{SofiaTree}s resulting from recursively
+processing the \m{AxiomSchema}s in the list parametrising \m{ReplaceString}. The
+first element in that list is \m{Final 2}, which refers to the second
+\emph{external} parameter, namely \texttt{[m][k]}. The second element is of type
+\m{ReplaceAll} and tells us that all occurrences of the third \emph{external}
+parameter (namely \texttt{[n]}) should be replaced by the result of processing
+\m{FinalString "[0[]]"}. That is, all occurences of \texttt{[n]} in
+\texttt{[blabla[n][m][k]]} are to be replaced by \texttt{[0[]]}, which results
+in \texttt{[blabla[0[]][m][k]]}.
+\\\\
+The next elements \m{Final 3}, \m{Final 3} and \m{Final 1} refer to the
+third, again the third and the first \emph{external} parameter respectively as
+before. The sixth element in that list adds another level of recursion. Being of
+type \m{ReplaceAll} it tells us that all occurrences of the third
+\emph{external} parameter (namely \texttt{[n]}) in the first \emph{external}
+parameter (namely \texttt{[blabla[n][m][k]]}) should be replaced with the result
+of processing \m{ReplaceString "[1+[[]]]" 0 [Final 3]}. Processing this, we
+replace all occurrences of \texttt{[[]]} with the result of processing
+\m{Final 3} (i.e.\ \texttt{[n]}) and end up with \texttt{[1+[n]]}. Now we
+replace all occurrences of \texttt{[n]} in \texttt{[blabla[n][m][k]]} with
+\texttt{[1+[n]]}, which yields \texttt{[blabla[1+[n]][m][k]]}.
+\\\\
+The last three elements in the outermost list again refer to \emph{external}
+parameters respectively. After processing the whole data structure, we end up
+with the following \m{Sofia} expression:
+\begin{quote}\vbox%
+{\haddockverb\begin{verbatim}
+[[m][k][blabla[n][m][k]][[n][[n]nat][blabla[n][m][k]]:[blabla[n][m][k]]]:
+ [[n][[n]nat]:[blabla[n][m][k]]]] 
+\end{verbatim}}
+\end{quote}
 
 \input{haddock/WebInterface}
 
