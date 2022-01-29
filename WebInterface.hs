@@ -69,6 +69,7 @@ import GHC.Int
 import Database.Persist.Sqlite
 import Control.Monad.Trans.Resource (runResourceT)
 import Control.Monad.Logger (runStderrLoggingT)
+import Text.Internal.Css
 
 import Data.Text
 import Data.List.Split
@@ -98,19 +99,21 @@ mkYesod "App" [parseRoutes|
 /                      HomeR       GET POST
 /Sofia-Haskell.pdf     DocR        GET
 /theory.db3            DataR       GET
+/style.css             StylesheetR GET
 |]
 
 instance Yesod App where
     defaultLayout widget = do
         pc <- widgetToPageContent $ do
             widget
-            toWidget $(luciusFile "style.lucius")
+            --toWidget $(luciusFile "style.lucius")
         withUrlRenderer
             [hamlet|
                 $doctype 5
                 <html>
                     <head>
                         <title>#{pageTitle pc}
+                        <link rel=stylesheet href=@{StylesheetR}>
                         ^{pageHead pc}
                     <body>
                         <div #mainBox>
@@ -143,7 +146,7 @@ strProoflines ::    Proof   -- ^The `Proof` to be converted.
                  -> [Text]  -- ^The resulting list of `Text` representations.
 strProoflines p = case p of
                 PListEnd -> []
-                _        -> Prelude.map pack $
+                _        -> Prelude.map Data.Text.pack $
                                 (Data.List.Split.splitOn "\n" $ show $ p) ++
                                 [""]
 
@@ -195,8 +198,8 @@ proofWidget newhistory valid pLines errorMsgs=
                 $forall line <- pLines
                     #{line}<br>
                 <input type=hidden name=history
-                   value="#{pack newhistory}">
-                $forall line <- Prelude.map pack errorMsgs
+                   value="#{Data.Text.pack newhistory}">
+                $forall line <- Prelude.map Data.Text.pack errorMsgs
                     <b>Error: #{line}<br>
             $else
                 Hello! You can start creating a proof.
@@ -256,6 +259,9 @@ infoWidget page theory =
      |]
 
 ------------------------------------ Handlers ----------------------------------
+
+getStylesheetR :: HandlerFor App Text.Internal.Css.Css
+getStylesheetR = withUrlRenderer $(luciusFile "style.lucius")
 
 -- |Routes directly to `postHomeR`.
 getHomeR :: Handler Html
