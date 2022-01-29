@@ -19,13 +19,22 @@ The documentation was generated using:
 * pygments-2.10.0
 
 ## Usage
-The proof assistant is used via a web browser interface. To run it locally, compile the source code with
+The proof assistant is used via a web browser interface. Before you can run it,
+you have to rename the `theory_examples.db3` to `theory.db3` or download a
+theory database from an online version of Sofia and place it in the source
+directory.
+
+To run Sofia locally, compile the source code with
 ```shell
 $ ghc --make WebInterface.hs
 ```
 and then start it with:
 ```shell
 $ ./WebInterface.hs
+```
+Alternatively you can also run it with
+```shell
+$ runhaskell WebInterface.hs
 ```
 
 Then point your web browser to `http://localhost:3000`. Further help can be found within the web interface by typing `:help`.
