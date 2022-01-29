@@ -63,21 +63,25 @@
 
 \chapter{Introduction}
 The purpose of this report is to document the work on the Haskell
-implementation of the Sofia proof assistant, which is based on the earlier
+implementation of the SOFiA proof assistant, which is based on the earlier
 Python implementation.\footnote{See: %
 \url{https://github.com/ZurabJanelidze/sofia}}
 The document is work in progress and targets contributors to the project. Hence
-no further introduction to the context of the project is given. A more detailed
-introduction may be added in future.
-\\\\
-Note that the given implementation makes use of the \m{Parser} data type,
-created by \textcite{Hutton}, which is available on the web. The rest of the
-source code and this documentation stand under the GNU General Public License
-v3.0\footnote{See: \url{https://www.gnu.org/licenses/}}.
-\\\\
-The source code of this software is hosted on
-GitHub\footnote{See: \url{https://github.com/g-regex/sofia_haskell}}. During the
-current stage of development, however, the repository is private at the moment.
+no further introduction to the context of the project is given. In the
+description of the Python implementation the name of this software is motivated
+as follows.
+\begin{quote}
+SOFiA stands for "Synaptic First-Order Assembler". The small "i" indicates that
+the default base of the language is a bit less than that of intuitionistic
+logic. Namely, disjunction and false are not implemented.
+\end{quote}
+Note that the given Haskell code  makes use of the \m{Parser} data type, created
+by \textcite{Hutton}, which is available on the web. The rest of the source code
+and this documentation stand under the GNU General Public License
+v3.0\footnote{See: \url{https://www.gnu.org/licenses/}}. The source code of this
+software is hosted on GitHub\footnote{See:
+\url{https://github.com/g-regex/sofia_haskell}}. During the current stage of
+development, however, the repository is private.
 
 \markdownInput{../README.md}
 

@@ -24,11 +24,11 @@ tested.
 ## Usage
 The proof assistant is used via a web browser interface. Before you can run it,
 you have to rename the `theory_examples.db3` to `theory.db3` or download a
-theory database from an online version of Sofia and place it in the source
+theory database from an online version of SOFiA and place it in the source
 directory. In either case you have to ensure that a valid `theory.db3` is
 present in the source directory.
 
-To run Sofia locally, compile the source code with
+To run SOFiA locally, compile the source code with
 ```shell
 $ ghc --make WebInterface.hs
 ```
