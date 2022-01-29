@@ -42,4 +42,4 @@ $ runhaskell WebInterface.hs
 ```
 
 Then point your web browser to `http://localhost:3000`. Further help can be
-found within the web interface by typing `:help`.
+found from within the web interface by typing `:help`.
