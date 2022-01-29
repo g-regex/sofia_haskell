@@ -97,12 +97,10 @@ module Sofia (
     validateSubst
 ) where
 
---------------------------- Using Graham Hutton's code -------------------------
 import SofiaParser
 import SofiaAxiomParser
 import SofiaTree
 import ListHelpers
---------------------------------------------------------------------------------
 
 main :: IO ()
 main = pure ()
