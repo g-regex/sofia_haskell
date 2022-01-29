@@ -291,7 +291,7 @@ postHomeR = do
                 _  -> mainHandler history [] message oldpage
 
 
--- |Processes a `meta command' and then calls the `mainHandler`.
+-- |Processes a meta command and then calls the `mainHandler`.
 metaHandler ::     String               -- ^The command history.
                 -> (String, [String])   -- ^Ordered pair containing a `String`
                                         --  representation of the command
