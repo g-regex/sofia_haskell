@@ -498,7 +498,7 @@ treeSubstSymbol cscss t =
                     (toType t)
                     [treeSubstSymbol cscss t' | t' <- getSubtrees t]
 
--- |Replaces a SofiaTree `t` (atom) with another SofiaTree `t'`, if the list
+-- |Replaces a `SofiaTree` `t` (atom) with another `SofiaTree` `t'`, if the list
 -- `aas` contains a pair (@t@, @t'@) and the number of matched occurrences of
 -- `t` is in the list `is`; otherwise `t` remains unchanged.
 treeSubstTree ::    [(SofiaTree, SofiaTree)] -- ^The list `cscss` of ordered pairs
@@ -543,9 +543,9 @@ treeSubstTreeHelper rs (t:ts) is i =
         rest_tree  = fst rest
         rest_i     = snd rest
 
--- |Replaces a string "x" with "x", "x'", "x''", "x'''", "x1", "x2", ...
+-- |Replaces a `String` "x" with "x", "x'", "x''", "x'''", "x1", "x2", ...
 -- based on the availability as indicated by the list of unavailable
--- variables.
+-- `String`s (i.e.\ variable names).
 strAltName ::      String   -- ^The `String` to be replaced.
                 -> [String] -- ^A list of `String`s which are unavailable.
                 -> String   -- ^The (possibly) replaced `String`.
