@@ -593,7 +593,7 @@ treeSubstOneSymbol ::   [ProofLine] -- ^A list of `ProofLine`s constituting
                                     --  the proof.
                      -> String      -- ^`String` representation of the variable
                                     --  to be renamed (e.g.\ "x")
-                     -> String      -- ^`String representation of the suggested
+                     -> String      -- ^`String` representation of the suggested
                                     --  new name for the variable (e.g.\
                                     --  "y")
                      -> SofiaTree   -- ^The expression in which the variable
