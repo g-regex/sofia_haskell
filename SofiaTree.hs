@@ -34,11 +34,11 @@ specifically for the Sofia proof assistant.
 module SofiaTree
     (TypeOfNode (Atom, Statement, Formula, Implication, Equality, Symbol,
                  Error),
-     Tree,
+     Tree (Node),
      SofiaTree,
      DeductionRule (Assumption, Recall, Selfequate, Restate, Synapsis, Apply,
                     RightSub, LeftSub),
-     ProofLine,
+     ProofLine (Line),
      Proof (PListItem, PListEnd),
 
      -- * Operators
@@ -158,9 +158,8 @@ instance Show (DeductionRule) where
     show (Recall (a, b))       = "recalling " ++ (show b) ++ "."
 
 -- |A `SofiaTree` is a `Tree` containing a parsed Sofia string. Each 'Node'
--- of such a 'Tree' contains a list of 'Char's (only non-empty, if the
--- 'TypeOfNode' is 'Symbol') equal to the 'String' representation of the
--- 'Node' and the 'TypeOfNode' of the 'Node'.
+-- of such a 'Tree' contains a 'String' (only non-empty, if the
+-- 'TypeOfNode' is 'Symbol') and has a specified 'TypeOfNode'.
 type SofiaTree = Tree Char TypeOfNode
 
 class SType a where
@@ -198,11 +197,11 @@ instance (Printable a, SType b) => SofiaTreeClass (Tree a b) where
     isFormulator (Node a b cs) =
         not (or [toType b == Statement, toType b == Formula, toType b == Atom])
 
--- |A `ProofLine` is a `Line` with 4 parameters. The first `Int` is the
--- number of the `Line` in a `Proof`, the second `Int` is the assumption
--- depth, the `SofiaTree` is the statement contained in the line and the
--- `DeductionRule` is the rule that justifies the occurrence of the
--- `ProofLine` in a `Proof`.
+-- |The `Int`s are respectively the
+-- number of the `Line` and the assumption
+-- depth. The `SofiaTree` must be a statement and the
+-- `DeductionRule` justifies the occurrence of the
+-- statement in a `Proof`.
 data ProofLine = Line Int Int SofiaTree DeductionRule
     deriving Eq -- ^Membership of the `Eq` class is simply derived. This is
                 --  needed to reverse a list of `ProofLine`s, if required.
@@ -212,11 +211,10 @@ data ProofLine = Line Int Int SofiaTree DeductionRule
 instance Show (ProofLine) where
     show (Line a b c d) = (show c) ++ " /L" ++ (show a) ++ ": " ++ (show d)
 
--- |A `Proof` is a list of `ProofLine`s. To allow for creating a customised
--- instance of `Show` for `Proof`, an own list type is implemented here.
--- To resemble a list, a `Proof` consists of a `PListItem` parametrised by
--- a `ProofLine` (the head of the list) and a `Proof` (the tail of the
--- list)
+-- |A `Proof` is a list of `ProofLine`s. To create a customised
+-- instance of `Show`, an own list type is implemented.
+-- It consists of a `PListItem` parametrised by a `ProofLine` (the list's head)
+-- and a `Proof` (the list's tail).
 data Proof = PListItem ProofLine Proof | PListEnd
 
 showLine :: ProofLine -> Bool -> String
@@ -229,8 +227,8 @@ showLine pl b =
                         _             -> if b then "╚" else "║"
        showLine' pl i = "║" ++ (showLine' pl (i - 1))
 
--- |A `Proof` is displayed in bracket proof form like in the Python
--- version.
+-- |A `Proof` is displayed in bracket proof format like in the Python
+-- implementation.
 instance Show (Proof) where
     show (PListEnd)      = ""
     show (PListItem x PListEnd) = (showLine x False) ++ (show x)
