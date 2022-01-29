@@ -1,5 +1,5 @@
 ## Dependencies
-This software has developed using the following libraries (compatibility with other versions has not been tested):
+This software was developed using the following libraries (compatibility with other versions has not been tested):
 
 * ghc-8.10.4
 * yesod-1.6.1.1
