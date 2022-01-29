@@ -1,5 +1,6 @@
 *.*
 !README.md
+!LICENSE.md
 !doc/doc.tex
 !doc/figures/*.tex
 !*.hs
