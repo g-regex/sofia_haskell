@@ -26,7 +26,7 @@ Stability   : experimental
 Portability : POSIX
 
 The `SofiaAxiomParser` module contains the definition of the `AxiomSchema` data
-type to store recursive definitions of axiom schemas. Further, it contains
+type to store recursive definitions of axiom schemata. Further, it contains
 functions to parse `String` representations of `AxiomSchema`ta and functions to
 create `Postulate`s from `AxiomSchema`ta.
 -}

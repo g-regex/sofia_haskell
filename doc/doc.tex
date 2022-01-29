@@ -162,7 +162,7 @@ Each entry as an auto-incrementing (default setting) \ms{"id"} as the primary
 key. Further, each entry can be identified by a \emph{unique} combination of a
 \ms{"rubric"} and a \ms{"name"} (e.g.\ \texttt{Arithmetic} and
 \texttt{Induction}). The column \ms{"schema"} contains string representations of
-\m{AxiomSchema}ta (see Section~\ref{sec:axiom_schemas}). The column
+\m{AxiomSchema}ta (see Section~\ref{sec:axiom_schemata}). The column
 \ms{"params"} contains the number of parameters required by the \m{AxiomSchema}
 - this value is determined by the \m{AxiomSchema}, but is stored for convenience
 in the table as well. The \ms{"desc"} column contains some string containing a
@@ -201,14 +201,14 @@ which can then conveniently be accessed and processed further by other Haskell
 functions.
 
 \pagebreak
-\section{Axiom schemas}\label{sec:axiom_schemas}
+\section{Axiom schemata}\label{sec:axiom_schemata}
 \input{haddock/SofiaAxiomParser}
 The syntax for encoding \m{AxiomSchema}ta as strings is defined by the following
 EBNF:
 \begin{figure}[h!]
     {\renewcommand{\arraystretch}{2.0}
     \input{figures/axiom_ebnf}}
-    \caption{EBNF for axiom schemas}\label{fig:EBNFaxiom}
+    \caption{EBNF for axiom schemata}\label{fig:EBNFaxiom}
 \end{figure}
 
 As Figure~\ref{fig:EBNFaxiom} shows, an $\langle \texttt{axiom} \rangle$ is either
