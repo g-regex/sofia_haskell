@@ -79,7 +79,9 @@ AxiomBuilder
 data App = App ConnectionPool
 
 mkYesod "App" [parseRoutes|
-/            HomeR       GET POST
+/                      HomeR       GET POST
+/Sofia-Haskell.pdf     DocR        GET
+/theory.db3            DataR       GET
 |]
 
 instance Yesod App where
@@ -113,7 +115,7 @@ openConnectionCount :: Int
 openConnectionCount = 10
 
 main :: IO ()
-main = runStderrLoggingT $ withSqlitePool "theory.db" openConnectionCount
+main = runStderrLoggingT $ withSqlitePool "theory.db3" openConnectionCount
     $ \pool -> liftIO $ do
         warp 3000 $ App pool
 
@@ -353,8 +355,15 @@ metaHandler history parsedMeta message oldpage = do
         "back"    -> mainHandler hpop [] "" oldpage
             where
              hpop = join ";" $ pop historylist
+        "doc"     -> redirect DocR
+        "database" -> redirect DataR
         _  -> mainHandler history [] message oldpage
 
+getDocR :: Handler Html
+getDocR = sendFile "application/pdf" "doc/doc.pdf"
+
+getDataR :: Handler Html
+getDataR = sendFile "application/x-sqlite3" "theory.db3"
 
 mainHandler ::      String              -- ^The command history.
                 -> [String]             -- ^A list of error messages resulting

@@ -189,6 +189,10 @@ sMeta =    do cs <- sWord "help"
                    return (cs, [])
             <|> do cs <- sWord "back"
                    return (cs, [])
+            <|> do cs <- sWord "doc"
+                   return (cs, [])
+            <|> do cs <- sWord "database"
+                   return (cs, [])
             <|> do x <- sMetaPost
                    return x
             <|> do x <- sMetaLoad
