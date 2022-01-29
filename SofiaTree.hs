@@ -39,7 +39,7 @@ module SofiaTree
      DeductionRule (Assumption, Recall, Selfequate, Restate, Synapsis, Apply,
                     RightSub, LeftSub),
      ProofLine,
-     Proof (PListEnd),
+     Proof (PListItem, PListEnd),
 
      -- * Operators
      (<+>),
@@ -207,8 +207,8 @@ data ProofLine = Line Int Int SofiaTree DeductionRule
     deriving Eq -- ^Membership of the `Eq` class is simply derived. This is
                 --  needed to reverse a list of `ProofLine`s, if required.
 
--- |A `ProofLine` shows a string representation of the Sofia statement it
--- contains as well as the justifying `DeductionRule`.
+-- |Shows a string representation of the contained `Sofia` statement  as well as
+-- the justifying `DeductionRule`.
 instance Show (ProofLine) where
     show (Line a b c d) = (show c) ++ " /L" ++ (show a) ++ ": " ++ (show d)
 
