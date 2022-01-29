@@ -18,7 +18,8 @@ The documentation was generated using:
 * minted 2017/07/19 v2.5
 * pygments-2.10.0
 
-Compatibility with other versions of these libraries has not been tested.
+Compatibility with other versions of these programs and libraries has not been
+tested.
 
 ## Usage
 The proof assistant is used via a web browser interface. Before you can run it,
@@ -40,4 +41,5 @@ Alternatively you can also run it with:
 $ runhaskell WebInterface.hs
 ```
 
-Then point your web browser to `http://localhost:3000`. Further help can be found within the web interface by typing `:help`.
+Then point your web browser to `http://localhost:3000`. Further help can be
+found within the web interface by typing `:help`.
