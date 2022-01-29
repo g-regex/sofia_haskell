@@ -341,7 +341,7 @@ ex8_9 = synapsis ex8_8
 
 ---------------------- functions to extract variables --------------------------
 -- $variables
--- Variables are a fundamental concept in the Sofia language. To handle
+-- Variables are a fundamental concept in the SOFiA language. To handle
 -- them efficiently a number of functions is introduced.
 
 -- |Given an atom containing a variable, the symbol (i.e.\ `String`)
