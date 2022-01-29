@@ -661,6 +661,8 @@ atomsFromCoords p xs =
 
 ------------------------- Functions generating SofiaTrees  ---------------------
 
+-- |A `Postulate` is an ordered pair containing a `SofiaTree` and a `String`
+-- which describes or names the postulate expressed by the `SofiaTree`.
 type Postulate = (SofiaTree, String)
 
 -- |Takes a `String` representation of a Sofia statement and `String`
