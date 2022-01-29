@@ -68,7 +68,6 @@ module SofiaTree
      -- * Generating data structures
      newSofiaTree,
      newProof,
-     newLine,
 
      treeEQ,
      treeIMP,
@@ -291,17 +290,6 @@ ruleFromLn (Line _ _ _ d) = d
 -- |Returns an empty `Proof` containing no `ProofLine`s.
 newProof :: Proof
 newProof = PListEnd
-
--- |Returns a `ProofLine` made up of the given parameters.
-newLine ::      Int             -- ^The number of the line in the `Proof`.
-             -> Int             -- ^The assumption depth.
-             -> SofiaTree       -- ^The `SofiaTree` contained in the
-                                --  `ProofLine`.
-             -> DeductionRule   -- ^The `DeductionRule` justifying the
-                                --  occurrence of the `ProofLine` in the
-                                --  `Proof`.
-             -> ProofLine       -- ^The resulting `ProofLine`.
-newLine a b c d = Line a b c d
 
 pdo :: ([ProofLine] -> a) -> Proof -> a
 pdo func proof = func (toListFromProof proof)

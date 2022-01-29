@@ -837,7 +837,7 @@ assume cs p = if valid then p <+> l else p
    where
     valid = validateAssume cs == []
     p' = toListFromProof p
-    l = toProofFromList [newLine
+    l = toProofFromList [Line
          (1 + numCurLn p')          -- increase line number
          (1 + numCurDepth p')       -- increase depth
          t
@@ -858,7 +858,7 @@ recall tcs p = if valid then p <+> l else p
    where
     valid = validateRecall t' == []
     p' = toListFromProof p
-    l = toProofFromList [newLine
+    l = toProofFromList [Line
          (1 + numCurLn p')              -- increase line number
          (numCurDepth p')               -- keep depth
          t'
@@ -877,7 +877,7 @@ selfequate (line, col) p = if valid then p <+> l else p
     valid = validateSelfequate (line, col) p == []
     p'    = toListFromProof p
     l     = toProofFromList
-             [newLine
+             [Line
              (1 + numCurLn p')          -- increase line number
              (numCurDepth p')           -- keep depth the same
              t
@@ -900,7 +900,7 @@ restate pos_list css p = if valid then p <+> l else p
    where
     valid = validateRestate pos_list css p == []
     p' = toListFromProof p
-    l = toProofFromList [newLine
+    l = toProofFromList [Line
          (1 + numCurLn p')                  -- increase line number
          (numCurDepth p')                   -- keep depth the same
          (treeSubstSymbolList p' vs css t)  -- substitute free variables
@@ -920,7 +920,7 @@ synapsis p = if valid then p <+> l else p
    where
     valid = validateSynapsis p == []
     p' = toListFromProof p
-    l  = toProofFromList [newLine
+    l  = toProofFromList [Line
           (1 + numCurLn p')                -- increase line number
           (numCurDepth p' - 1)             -- decrease assumption depth
           (t)
@@ -958,7 +958,7 @@ apply line pos_list col p = if valid then p <+> l else p
    where
     valid = validateApply line pos_list col p == []
     p'  = toListFromProof p
-    l   = toProofFromList [newLine
+    l   = toProofFromList [Line
            (1 + numCurLn p')          -- increase line number
            (numCurDepth p')           -- keep depth the same
            (t)
@@ -988,7 +988,7 @@ rightsub sub_line tgt_line is sub_col tgt_col p = if valid then p <+> l else p
    where
     valid = validateSubst sub_line tgt_line sub_col tgt_col p == []
     p' = toListFromProof p
-    l = toProofFromList [newLine
+    l = toProofFromList [Line
          (1 + numCurLn p')               -- increase line number
          (numCurDepth p')
          (t)
@@ -1015,7 +1015,7 @@ leftsub sub_line tgt_line is sub_col tgt_col p = if valid then p <+> l else p
    where
     valid = validateSubst sub_line tgt_line sub_col tgt_col p == []
     p' = toListFromProof p
-    l = toProofFromList [newLine
+    l = toProofFromList [Line
          (1 + numCurLn p')               -- increase line number
          (numCurDepth p')
          (t)
