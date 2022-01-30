@@ -106,7 +106,7 @@ main :: IO ()
 main = pure ()
 
 -- $naming
--- For consiseness and readability of the source code, the following naming
+-- For conciseness and readability of the source code, the following naming
 -- conventions for names of functions and function parameters are used
 -- within the @Sofia@ module (but not necessarily within the @SofiaTree@ or
 -- @SofiaParser@ modules). Where appropriate (in terms of readability)
