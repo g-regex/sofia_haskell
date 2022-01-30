@@ -74,6 +74,7 @@ import Text.Internal.Css
 import Data.Text
 import Data.List.Split
 import Text.Lucius (CssUrl, luciusFile, luciusFileReload, renderCss)
+import Text.Julius (Javascript, juliusFile)
 import SofiaCommandParser
 import SofiaAxiomParser
 import SofiaTree
@@ -100,6 +101,7 @@ mkYesod "App" [parseRoutes|
 /Sofia-Haskell.pdf     DocR        GET
 /theory.db3            DataR       GET
 /style.css             StylesheetR GET
+/script.js             ScriptR     GET
 |]
 
 instance Yesod App where
@@ -114,6 +116,7 @@ instance Yesod App where
                     <head>
                         <title>#{pageTitle pc}
                         <link rel=stylesheet href=@{StylesheetR}>
+                        <script src=@{ScriptR}>
                         ^{pageHead pc}
                     <body>
                         <div #mainBox>
@@ -217,51 +220,55 @@ infoWidget ::      String                   -- ^Indentifies the page to be
 infoWidget page theory =
      [whamlet|
       <div .inside1>
-       <div .inside2>
-        <input type=hidden name=page value=#{page}>
-        $if page == "help"
-            ^{helpText}
-        $else
-            Type <code><kbd>:help</kbd></code> to get help.<br><br>
-            <table #theory>
-                <tr>
-                 <th>ID
-                 <th>Rubric: Name
-                 <th>Params
-                 <th>Description
-                $forall Entity id ab <- theory
-                    <tr>
-                        <td valign="top">#{fromSqlKey id}
-                        <td valign="top">
-                            $if axiomBuilderRubric ab == ""
-                                #{axiomBuilderName ab}
-                            $else
-                                #{axiomBuilderRubric ab}:
-                                #{axiomBuilderName ab}
-                        <td valign="top">
-                            #{axiomBuilderParams ab}
-                        <td valign="top">
-                         $if axiomBuilderRubric ab == "Example"
-                          Type
-                          <code>
-                           <kbd>:load
-                           #{fromSqlKey id} 
-                          to load this example.<br><br>
+       $if page == "help"
+        <div .inside2 #helpScroll>
+         <input type=hidden name=page value=#{page}>
+         ^{helpText}
+       $else
+        <div .inside2 #theoryScroll>
+         Type <code><kbd>:help</kbd></code> to get help.<br><br>
+         <table #theory>
+             <tr>
+              <th>ID
+              <th>Rubric: Name
+              <th>Params
+              <th>Description
+             $forall Entity id ab <- theory
+                 <tr>
+                     <td valign="top">#{fromSqlKey id}
+                     <td valign="top">
+                         $if axiomBuilderRubric ab == ""
+                             #{axiomBuilderName ab}
                          $else
-                          $if validateSyntax sDesc (axiomBuilderDesc ab) == []
-                           $forall d <- descParse (axiomBuilderDesc ab)
-                            $if snd d /= ""
-                                #{fst d}<code>#{snd d}</code>
-                            $else 
-                                #{fst d}
-                          $else
-                            #{axiomBuilderDesc ab}
+                             #{axiomBuilderRubric ab}:
+                             #{axiomBuilderName ab}
+                     <td valign="top">
+                         #{axiomBuilderParams ab}
+                     <td valign="top">
+                      $if axiomBuilderRubric ab == "Example"
+                       Type
+                       <code>
+                        <kbd>:load
+                        #{fromSqlKey id} 
+                       to load this example.<br><br>
+                      $else
+                       $if validateSyntax sDesc (axiomBuilderDesc ab) == []
+                        $forall d <- descParse (axiomBuilderDesc ab)
+                         $if snd d /= ""
+                             #{fst d}<code>#{snd d}</code>
+                         $else 
+                             #{fst d}
+                       $else
+                         #{axiomBuilderDesc ab}
      |]
 
 ------------------------------------ Handlers ----------------------------------
 
 getStylesheetR :: HandlerFor App Text.Internal.Css.Css
 getStylesheetR = withUrlRenderer $(luciusFile "style.lucius")
+
+getScriptR :: HandlerFor App Text.Julius.Javascript
+getScriptR = withUrlRenderer $(juliusFile "script.julius")
 
 -- |Routes directly to `postHomeR`.
 getHomeR :: Handler Html
@@ -484,27 +491,3 @@ divView newhistory valid pLines page theory errorMsgs =
          <input #prompt type=text name=message
             placeholder="Type Command ..." size="80" autofocus>
      |]
-
------------------------------------ deprecated ---------------------------------
-
-tableView newhistory valid pLines page theory errorMsgs =
-    defaultLayout
-     [whamlet|
-     <form #theform method=post action=@{HomeR}>
-      <table width="100%" cellspacing="10" border="0" #outertable>
-       <tbody>
-        <tr #outertabletoptr>
-         <td #outertabletoptd>
-          <table width="100%" cellspacing="0" border="1" #tbl>
-           <tbody>
-            <tr .row>
-             <td #proof valign="top" width="50%">
-              ^{proofWidget newhistory valid pLines errorMsgs}
-             <td #info valign="top" width="50%">
-              ^{infoWidget page theory}
-        <tr #outertablebottom>
-         <td>
-          <div #cmd>
-             <input #prompt type=text name=message
-                placeholder="Type Command ..." size="80" autofocus>
-     |] 

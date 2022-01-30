@@ -1,0 +1,28 @@
+//https://stackoverflow.com/questions/17642872/refresh-page-and-keep-scroll-position
+document.addEventListener("DOMContentLoaded", function(event) { 
+    var helpScrollpos = sessionStorage.getItem('helpScrollpos');
+    if (helpScrollpos) {
+        if (document.getElementById("helpScroll")) {
+            document.getElementById('helpScroll').scrollTo(0, helpScrollpos);
+        }
+        sessionStorage.removeItem('helpScrollpos');
+    }
+    var theoryScrollpos = sessionStorage.getItem('theoryScrollpos');
+    if (theoryScrollpos) {
+        if (document.getElementById("theoryScroll")) {
+            document.getElementById('theoryScroll').scrollTo(0, theoryScrollpos);
+        }
+        sessionStorage.removeItem('theoryScrollpos');
+    }
+});
+
+window.onbeforeunload = function(e) {
+    if (document.getElementById("helpScroll")) {
+        sessionStorage.setItem('helpScrollpos',
+                document.getElementById('helpScroll').scrollTop);
+    }
+    if (document.getElementById("theoryScroll")) {
+        sessionStorage.setItem('theoryScrollpos',
+                document.getElementById('theoryScroll').scrollTop);
+    }
+};

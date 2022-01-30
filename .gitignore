@@ -11,6 +11,7 @@
 !Makefile
 !theory_examples.db3
 !*.lucius
+!*.julius
 !*.hamlet
 !*/
 deprecated

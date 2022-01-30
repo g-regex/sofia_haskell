@@ -89,13 +89,13 @@ body {
 input[type=text] {
   border: none;
   background: #3e4446;
-  border-bottom: 2px solid darkgrey;
+  border-bottom: 2px solid grey;
   color: white;
   font-size: 12pt;
 }
 
 input[type=text]:focus {
-  border-bottom: 2px solid grey;
+  border-bottom: 2px solid darkgrey;
   outline: none;
 }
 
