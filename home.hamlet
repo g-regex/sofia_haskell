@@ -1,0 +1,5 @@
+<center #home>
+    <span #logo>SOFiA
+    <br>
+    <span #hinfo>Type <code><kbd>:help</kbd></code> to get help.<br>
+    <span #hinfo>Type <code><kbd>:license</kbd></code> to view license information.
