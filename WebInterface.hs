@@ -183,6 +183,12 @@ propFromLines pl = ("{`" ++ pstr ++ "`, 0, []}", "Postulate: " ++ pstr)
 helpText :: Widget
 helpText = $(whamletFile "help.hamlet")
 
+licenseText :: Widget
+licenseText = $(whamletFile "license.hamlet")
+
+homeText :: Widget
+homeText = $(whamletFile "home.hamlet")
+
 -- |Generates the HTML representation of the proof to be displayed.
 proofWidget ::      String      -- ^The history of commands that were used to
                                 --  build the current proof.
@@ -223,10 +229,14 @@ infoWidget page theory =
        $if page == "help"
         <div .inside2 #helpScroll>
          <input type=hidden name=page value=#{page}>
-         ^{helpText}
-       $else
+         ^{helpText}  
+       $elseif page == "license"
+        <div .inside2>
+         <input type=hidden name=page value=#{page}>
+         ^{licenseText}
+       $elseif page == "theory"
         <div .inside2 #theoryScroll>
-         Type <code><kbd>:help</kbd></code> to get help.<br><br>
+         <span #hinfo>Type <code><kbd>:help</kbd></code> to get help.<br><br>
          <table #theory>
              <tr>
               <th>ID
@@ -260,6 +270,10 @@ infoWidget page theory =
                              #{fst d}
                        $else
                          #{axiomBuilderDesc ab}
+       $else
+        <div .inside2>
+         <input type=hidden name=page value=#{page}>
+         ^{homeText}
      |]
 
 ------------------------------------ Handlers ----------------------------------
@@ -379,6 +393,8 @@ metaHandler history parsedMeta message oldpage = do
                                   ""
                                   oldpage
         "help"    -> mainHandler history [] "" "help"
+        "license" -> mainHandler history [] "" "license"
+        "home" -> mainHandler history [] "" "home"
         "theory"  -> mainHandler history [] "" "theory"
         "new"     -> mainHandler "" [] "" oldpage
         "back"    -> mainHandler hpop [] "" oldpage

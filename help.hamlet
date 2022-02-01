@@ -2,6 +2,10 @@ Available commands:
  <ul>
   <li><code><kbd>:help</kbd></code><br>
     Shows this help.
+  <li><code><kbd>:license</kbd></code><br>
+    Shows license information.
+  <li><code><kbd>:home</kbd></code><br>
+    Shows the start page.
   <li><code><kbd>:new</kbd></code><br>
     Clears the current proof.
   <li><code><kbd>:back</kbd></code><br>

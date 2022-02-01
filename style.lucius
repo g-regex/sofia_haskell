@@ -13,6 +13,9 @@ body {
   padding: 10px;
   box-sizing: border-box;
 }
+a {
+  color: white;
+}
 #mainBox {
   padding: 0px;
   margin: 0px;
@@ -140,6 +143,22 @@ kbd {
   padding: 5px;
   font-size: 9pt;
   color: grey;
+}
+
+#hinfo {
+  color: grey;
+}
+
+#logo {
+  font-family: monospace;
+  font-size: 40pt;
+}
+
+#home {
+  margin: 30px;
+  padding-top: 100px;
+  padding-bottom: 100px;
+  //border: 3px dashed #1c87c9;
 }
 
 #theory {

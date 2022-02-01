@@ -201,6 +201,10 @@ sMetaLoad = do cs <- sWord "load"
 sMeta :: Parser (String, [String])
 sMeta =    do cs <- sWord "help"
               return (cs, [])
+            <|> do cs <- sWord "license"
+                   return (cs, [])
+            <|> do cs <- sWord "home"
+                   return (cs, [])
             <|> do cs <- sWord "theory"
                    return (cs, [])
             <|> do cs <- sWord "new"
