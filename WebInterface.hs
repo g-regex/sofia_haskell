@@ -486,8 +486,10 @@ divView newhistory valid pLines page theory errorMsgs =
           ^{proofWidget newhistory valid pLines errorMsgs}
          <div #info .tddiv>
           ^{infoWidget page theory}
-      <br>
-      <div #cmd>
+      <div #bottom>
+        <div #cmd>
          <input #prompt type=text name=message
             placeholder="Type Command ..." size="80" autofocus>
+       <center #credits>
+        Haskell implementation of [SOFiA] developed by Gregor Feierabend &#64; Centre for Experimental Mathematics (SU) & Mathematical Structures Research Programme (NITheCS)
      |]
