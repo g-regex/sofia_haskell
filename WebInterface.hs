@@ -174,7 +174,7 @@ propFromLines pl = ("{`" ++ pstr ++ "`, 0, []}", "Postulate: " ++ pstr)
     where
         t     = treeFromLn $ Prelude.head pl
         t'    = treeFromLn $ Prelude.last pl
-        pstr  = show (treeSTMT ([t, treeIMP, t']))
+        pstr  = show (treeSTMTform ([t, treeIMP, t']))
 
 ------------------------------------- Widgets ----------------------------------
 
