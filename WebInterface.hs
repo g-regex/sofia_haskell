@@ -490,6 +490,8 @@ divView newhistory valid pLines page theory errorMsgs =
         <div #cmd>
          <input #prompt type=text name=message
             placeholder="Type Command ..." size="80" autofocus>
-       <center #credits>
-        Haskell implementation of [SOFiA] developed by Gregor Feierabend &#64; Centre for Experimental Mathematics (SU) & Mathematical Structures Research Programme (NITheCS)
+        <center #credits>
+         Haskell implementation of [SOFiA] developed by Gregor Feierabend &#64;
+         Centre for Experimental Mathematics (SU) & Mathematical Structures
+         Research Programme (NITheCS)
      |]
