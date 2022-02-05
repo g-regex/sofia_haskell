@@ -236,6 +236,7 @@ infoWidget page theory =
          ^{licenseText}
        $elseif page == "theory"
         <div .inside2 #theoryScroll>
+         <input type=hidden name=page value=#{page}>
          <span #hinfo>Type <code><kbd>:help</kbd></code> to get help.<br><br>
          <table #theory>
              <tr>
