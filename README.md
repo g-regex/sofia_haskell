@@ -30,15 +30,15 @@ present in the source directory.
 
 To run SOFiA locally, compile the source code with
 ```shell
-$ ghc --make WebInterface.hs
+$ ghc --make Main.hs
 ```
 and then start it with:
 ```shell
-$ ./WebInterface.hs
+$ ./Main
 ```
 Alternatively you can also run it with:
 ```shell
-$ runhaskell WebInterface.hs
+$ runhaskell Main.hs
 ```
 
 Then point your web browser to `http://localhost:3000`. Further help can be

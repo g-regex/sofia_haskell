@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
 {-|
-Module      : WebInterface
+Module      : Main
 Description : Part of the Sofia proof assistant.
 Copyright   : Gregor Feierabend
 License     : GNU General Public License v3 (GPLv3)
@@ -43,7 +43,9 @@ Portability : POSIX
 
 {-# OPTIONS_HADDOCK prune #-}
 
-module WebInterface (
+module Main (
+        main,
+
         -- * Helper functions
         strProoflines,
         linesFromHist,
