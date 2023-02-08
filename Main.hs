@@ -41,6 +41,10 @@ Portability : POSIX
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+{- UPDATE -}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 {-# OPTIONS_HADDOCK prune #-}
 
 module Main (
